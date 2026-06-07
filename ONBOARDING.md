@@ -25,7 +25,10 @@
 | Concern | Entry Point |
 |---------|-------------|
 | Server (CDP, WebSocket, Express, auth) | `server.js` |
+| Click proxying (`POST /click`) + sidebar capture | `server.js` — search `CAPTURE_SCRIPT` and `/click` |
+| Sidebar DOM discovery (temporary diagnostic) | `server.js` — search `DISCOVER_SCRIPT` and `/discover` |
 | Client rendering, WebSocket, stop/send | `public/js/app.js` |
+| Right sidebar toggle, click proxy handlers | `public/js/app.js` — search `openRightSidebar` and `addClickProxyHandlers` |
 | Mobile UI structure | `public/index.html` |
 | Login page | `public/login.html` |
 | Mobile-first styles (minimal CDP overrides) | `public/css/style.css` |
@@ -47,6 +50,8 @@
 - **CDP overrides are minimal.** We stripped all CSS overrides (colors, spacing, code blocks, etc.) to let AG2.0's own injected CSS handle styling. Only scrollbar hiding and broken image suppression remain in our CSS.
 - **Never wipe cached content.** If snapshot capture returns null (no chat container found), the server keeps the last valid snapshot. The client never clears `chatContent.innerHTML` based on a failed selector check.
 - **Local network auth bypass.** Requests from 127.x/192.168.x/10.x are auto-authenticated, but only if no proxy headers (X-Forwarded-For, CF-Connecting-IP) are present.
+- **Right sidebar selector is fragile.** The AG right panel is found via position-based heuristic (elements right of viewport midpoint containing "Overview" + "Review" text). There are no stable IDs or data-testids. If AG's layout changes, the sidebar capture may fail silently (returns null). Use `GET /discover` to debug.
+- **Click proxy indices are ephemeral.** `data-ag-click-id` is assigned per snapshot by iterating visible `button/a/[role=button]` elements in DOM order. If the DOM changes between snapshot capture and click proxy execution (e.g., streaming content), the index can point to the wrong element. The label validation in `POST /click` catches most mismatches.
 
 ---
 

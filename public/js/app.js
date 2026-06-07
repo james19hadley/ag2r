@@ -27,6 +27,14 @@ const connectionDot = document.getElementById('connection-status');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 const sidebar = document.getElementById('sidebar');
 const sidebarClose = document.getElementById('sidebar-close');
+const reviewToggle = document.getElementById('review-toggle');
+const reviewBadge = document.getElementById('review-badge');
+const rightSidebar = document.getElementById('right-sidebar');
+const rightSidebarClose = document.getElementById('right-sidebar-close');
+const rightSidebarContent = document.getElementById('right-sidebar-content');
+const rightSidebarEmpty = document.getElementById('right-sidebar-empty');
+const rightSidebarOverlay = document.getElementById('right-sidebar-overlay');
+const rightSidebarCdpStyles = document.getElementById('right-sidebar-cdp-styles');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
 
 // ─────────────────────────────────────────────
@@ -154,6 +162,8 @@ async function loadSnapshot() {
     // Inject CSS (Antigravity's stylesheets)
     if (data.css) {
       cdpStyles.textContent = data.css;
+      // Also inject into right sidebar so captured content inherits AG styles
+      rightSidebarCdpStyles.textContent = data.css;
     }
 
     // Check if near bottom before rendering (for auto-scroll decision)
@@ -164,9 +174,14 @@ async function loadSnapshot() {
     chatContent.innerHTML = data.html;
     hideEmptyState();
 
-
     // Add mobile copy buttons to code blocks
     addMobileCopyButtons();
+
+    // Wire up click proxying for interactive elements
+    addClickProxyHandlers();
+
+    // Render right sidebar content
+    renderSidebarContent(data.sidebarHtml, data.css);
 
     // Auto-scroll: only if user was already near the bottom
     requestAnimationFrame(() => {
@@ -387,7 +402,7 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 // ─────────────────────────────────────────────
-// Sidebar
+// Left Sidebar
 // ─────────────────────────────────────────────
 function openSidebar() {
   sidebar.classList.add('open');
@@ -404,6 +419,107 @@ function closeSidebar() {
 sidebarToggle.addEventListener('click', openSidebar);
 sidebarClose.addEventListener('click', closeSidebar);
 sidebarOverlay.addEventListener('click', closeSidebar);
+
+// ─────────────────────────────────────────────
+// Right Sidebar (Review Panel)
+// ─────────────────────────────────────────────
+function openRightSidebar() {
+  rightSidebar.classList.add('open');
+  rightSidebar.inert = false;
+  rightSidebarOverlay.classList.add('visible');
+}
+
+function closeRightSidebar() {
+  rightSidebar.classList.remove('open');
+  rightSidebar.inert = true;
+  rightSidebarOverlay.classList.remove('visible');
+}
+
+reviewToggle.addEventListener('click', openRightSidebar);
+rightSidebarClose.addEventListener('click', closeRightSidebar);
+rightSidebarOverlay.addEventListener('click', closeRightSidebar);
+
+function renderSidebarContent(sidebarHtml) {
+  if (sidebarHtml) {
+    // Clear empty state and inject captured sidebar HTML
+    rightSidebarEmpty.classList.add('hidden');
+    // Preserve any existing content container or create one
+    let contentDiv = rightSidebarContent.querySelector('.right-sidebar-captured');
+    if (!contentDiv) {
+      contentDiv = document.createElement('div');
+      contentDiv.className = 'right-sidebar-captured';
+      rightSidebarContent.appendChild(contentDiv);
+    }
+    contentDiv.innerHTML = sidebarHtml;
+    // Show the review badge
+    reviewBadge.classList.remove('hidden');
+  } else {
+    // No sidebar content — show empty state
+    rightSidebarEmpty.classList.remove('hidden');
+    const contentDiv = rightSidebarContent.querySelector('.right-sidebar-captured');
+    if (contentDiv) contentDiv.remove();
+    reviewBadge.classList.add('hidden');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Click Proxying
+// ─────────────────────────────────────────────
+function addClickProxyHandlers() {
+  chatContent.querySelectorAll('[data-ag-click-id]').forEach(el => {
+    // Skip if already wired
+    if (el.dataset.agClickWired) return;
+    el.dataset.agClickWired = '1';
+
+    el.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const clickId = parseInt(el.dataset.agClickId, 10);
+      const label = el.dataset.agClickLabel || '';
+
+      // Check if this is a "Review" button — open sidebar instead of proxying
+      if (/^Review$/i.test(label.trim())) {
+        // Proxy the click AND open sidebar
+        el.classList.add('ag-clicking');
+        try {
+          await fetchAPI('/click', {
+            method: 'POST',
+            body: JSON.stringify({ clickId, label }),
+          });
+        } catch (err) {
+          console.debug('[Click] Proxy error:', err.message);
+        }
+        el.classList.remove('ag-clicking');
+        openRightSidebar();
+        // Refresh snapshot to pick up sidebar changes
+        setTimeout(loadSnapshot, 300);
+        setTimeout(loadSnapshot, 800);
+        setTimeout(loadSnapshot, 2000);
+        return;
+      }
+
+      // General click proxying
+      el.classList.add('ag-clicking');
+      try {
+        const res = await fetchAPI('/click', {
+          method: 'POST',
+          body: JSON.stringify({ clickId, label }),
+        });
+        const result = await res.json();
+        console.debug('[Click] Result:', result);
+      } catch (err) {
+        console.debug('[Click] Error:', err.message);
+      }
+      el.classList.remove('ag-clicking');
+
+      // Refresh snapshot to pick up changes from the click
+      setTimeout(loadSnapshot, 300);
+      setTimeout(loadSnapshot, 800);
+      setTimeout(loadSnapshot, 2000);
+    });
+  });
+}
 
 // ─────────────────────────────────────────────
 // Connection Status
