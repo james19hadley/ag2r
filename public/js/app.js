@@ -164,11 +164,9 @@ async function loadSnapshot() {
     chatContent.innerHTML = data.html;
     hideEmptyState();
 
-    // Apply container styles from AG2.0 (padding, gap — lost when we captured innerHTML)
+    // Log AG2.0's container styles for debugging
     if (data.containerCSS) {
-      console.debug('[Snapshot] Container styles:', data.containerCSS);
-      chatContent.style.paddingBottom = data.containerCSS.paddingBottom || '12px';
-      chatContent.style.gap = data.containerCSS.gap || '';
+      console.debug('[Snapshot] AG2.0 container styles:', data.containerCSS);
     }
 
     // Add mobile copy buttons to code blocks

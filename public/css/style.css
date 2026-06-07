@@ -465,88 +465,11 @@ body {
 
 /* ══════════════════════════════════════════════
    CDP Content Overrides
-   Applied to injected Antigravity DOM snapshots
+   Minimal — let AG2.0's own CSS do the work
    ══════════════════════════════════════════════ */
 
-/* Force dark backgrounds */
 #chat-content * {
   scrollbar-width: none;
-}
-
-#chat-content > div {
-  position: static !important;
-}
-
-/* Preserve absolute positioning for dropdowns */
-#chat-content [data-headlessui-state],
-#chat-content [role="listbox"],
-#chat-content [role="menu"] {
-  position: absolute !important;
-}
-
-/* Text color normalization */
-#chat-content,
-#chat-content p,
-#chat-content span,
-#chat-content div,
-#chat-content li {
-  color: var(--text-primary) !important;
-}
-
-/* Fix inline black text (AG2.0 sometimes uses inline color: black) */
-#chat-content [style*="color: black"],
-#chat-content [style*="color: rgb(0, 0, 0)"],
-#chat-content [style*="color:#000"] {
-  color: var(--text-primary) !important;
-}
-
-/* Links */
-#chat-content a {
-  color: var(--blue) !important;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* Code blocks */
-#chat-content pre {
-  background: #0d1117 !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 12px 14px !important;
-  overflow-x: auto !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-  font-family: var(--font-mono) !important;
-  font-size: 13px !important;
-  line-height: 1.5 !important;
-  margin: 8px 0 !important;
-  position: relative !important;
-}
-
-#chat-content pre code {
-  background: transparent !important;
-  padding: 0 !important;
-  border: none !important;
-  font-size: inherit !important;
-}
-
-/* Inline code */
-#chat-content :not(pre) > code {
-  background: rgba(99, 102, 241, 0.15) !important;
-  color: #c4b5fd !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.9em !important;
-}
-
-/* Single-line pre (inline-like) */
-#chat-content pre.single-line-pre {
-  display: inline !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  margin: 0 !important;
-  white-space: pre-wrap !important;
 }
 
 /* Hide broken local file/asset images */
@@ -556,106 +479,6 @@ body {
 #chat-content img[src*="symbols-icons"],
 #chat-content img[src$=".svg"][src^="/"] {
   display: none !important;
-}
-
-/* Fix streaming display — AG2.0 uses flex on .animate-markdown */
-#chat-content .animate-markdown {
-  display: inline !important;
-}
-
-/* User prompt styling — sticky elements pin at top while scrolling */
-#chat-content [data-ag-sticky] {
-  background-color: #111d2e !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10 !important;
-  padding: 10px 0 !important;
-  margin: 0 -16px !important;
-  padding-left: 16px !important;
-  padding-right: 16px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Inline-flex fix — only for containers with images */
-#chat-content [class*="inline-flex"]:has(img) {
-  display: inline-flex !important;
-}
-
-/* Paragraph spacing */
-#chat-content p {
-  display: block !important;
-  margin-bottom: 0.5em !important;
-}
-
-#chat-content p:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Lists */
-#chat-content ul,
-#chat-content ol {
-  padding-left: 24px !important;
-  margin: 8px 0 !important;
-}
-
-#chat-content li {
-  margin-bottom: 4px !important;
-}
-
-/* Headings in chat */
-#chat-content h1,
-#chat-content h2,
-#chat-content h3,
-#chat-content h4 {
-  color: var(--text-primary) !important;
-  margin: 16px 0 8px !important;
-  line-height: 1.3 !important;
-}
-
-#chat-content h1 { font-size: 1.4em !important; }
-#chat-content h2 { font-size: 1.2em !important; }
-#chat-content h3 { font-size: 1.1em !important; }
-
-/* Tables */
-#chat-content table {
-  border-collapse: collapse !important;
-  width: 100% !important;
-  margin: 8px 0 !important;
-  font-size: 13px !important;
-}
-
-#chat-content th,
-#chat-content td {
-  border: 1px solid var(--border) !important;
-  padding: 6px 10px !important;
-  text-align: left !important;
-}
-
-#chat-content th {
-  background: var(--bg-surface) !important;
-  font-weight: 600 !important;
-}
-
-/* Blockquotes */
-#chat-content blockquote {
-  border-left: 3px solid var(--accent) !important;
-  padding-left: 12px !important;
-  margin: 8px 0 !important;
-  color: var(--text-secondary) !important;
-}
-
-/* Horizontal rules */
-#chat-content hr {
-  border: none !important;
-  border-top: 1px solid var(--border) !important;
-  margin: 16px 0 !important;
-}
-
-/* Images in chat */
-#chat-content img:not([src^="/c:"]):not([src^="vscode-file:"]):not([src^="file:"]) {
-  max-width: 100% !important;
-  height: auto !important;
-  border-radius: var(--radius-sm) !important;
 }
 
 /* Mobile copy button for code blocks */
@@ -683,3 +506,4 @@ body {
 .mobile-copy-btn.copied {
   color: var(--green);
 }
+
