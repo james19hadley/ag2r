@@ -190,6 +190,17 @@ Review file changes directly on your phone. See diffs, browse modified files, an
   &nbsp;&nbsp;&nbsp;
   <img src="docs/review-diff.png" alt="Code diff view" width="320" />
 </p>
+---
+
+### Commenting
+
+Select text on any document, leave comments with context, and queue them for batch sending. Comments capture the selected text as a quote and your annotation.
+
+<p align="center">
+  <img src="docs/comment-add.png" alt="Add Comment dialog" width="320" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/comment-queued.png" alt="Queued Comments modal" width="320" />
+</p>
 
 ---
 
