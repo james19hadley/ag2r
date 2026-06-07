@@ -387,15 +387,7 @@ const CAPTURE_SCRIPT = `
     } catch {}
   }
 
-  // 14. Capture container's own computed styles (lost when we take innerHTML)
-  const containerStyles = window.getComputedStyle(container);
-  const containerCSS = {
-    paddingBottom: containerStyles.paddingBottom,
-    paddingTop: containerStyles.paddingTop,
-    gap: containerStyles.gap,
-  };
-
-  return { html, css, agentRunning, scrollInfo, containerCSS };
+  return { html, css, agentRunning, scrollInfo };
 })()
 `;
 

@@ -164,10 +164,6 @@ async function loadSnapshot() {
     chatContent.innerHTML = data.html;
     hideEmptyState();
 
-    // Log AG2.0's container styles for debugging
-    if (data.containerCSS) {
-      console.debug('[Snapshot] AG2.0 container styles:', data.containerCSS);
-    }
 
     // Add mobile copy buttons to code blocks
     addMobileCopyButtons();
