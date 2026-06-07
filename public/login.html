@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="AG2R — Login">
+  <meta name="theme-color" content="#090e17">
+  <title>AG2R — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-card">
+      <h1 class="login-title">AG2R</h1>
+      <p class="login-subtitle">Antigravity 2.0 Remote</p>
+
+      <form id="login-form" class="login-form">
+        <div class="input-group">
+          <input
+            type="password"
+            id="password-input"
+            class="login-input"
+            placeholder="Enter passcode"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+        <div id="login-error" class="login-error" hidden></div>
+        <button type="submit" id="login-btn" class="login-btn">
+          Connect
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const passwordInput = document.getElementById('password-input');
+    const loginBtn = document.getElementById('login-btn');
+    const errorEl = document.getElementById('login-error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.hidden = true;
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Connecting...';
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: passwordInput.value }),
+        });
+
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          const data = await res.json();
+          errorEl.textContent = data.error || 'Invalid passcode';
+          errorEl.hidden = false;
+          passwordInput.value = '';
+          passwordInput.focus();
+        }
+      } catch {
+        errorEl.textContent = 'Connection failed. Is the server running?';
+        errorEl.hidden = false;
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Connect';
+      }
+    });
+
+    // Auto-focus password field
+    passwordInput.focus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "ag2r",
+  "version": "1.0.0",
+  "description": "AG2R — Antigravity 2.0 Remote. Mobile remote interface for monitoring and interacting with Antigravity AI coding sessions.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["antigravity", "remote", "cdp", "ai"],
+  "license": "MIT",
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.2",
+    "compression": "^1.7.5",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "selfsigned": "^2.4.1",
+    "ws": "^8.18.0"
+  }
+}

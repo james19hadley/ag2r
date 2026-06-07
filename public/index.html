@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="AG2R — Mobile remote interface for Antigravity AI coding sessions">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <meta name="theme-color" content="#090e17">
+  <title>AG2R</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app" class="app">
+
+    <!-- Header -->
+    <header id="header" class="header">
+      <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle sidebar">
+        <span class="material-symbols-rounded">menu</span>
+      </button>
+      <h1 class="header-title">AG2R</h1>
+      <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected"></div>
+      <button id="settings-btn" class="icon-btn" aria-label="Settings">
+        <span class="material-symbols-rounded">settings</span>
+      </button>
+    </header>
+
+    <!-- Sidebar (stub — not functional yet) -->
+    <aside id="sidebar" class="sidebar" inert>
+      <div class="sidebar-header">
+        <h2>Chats</h2>
+        <button id="sidebar-close" class="icon-btn" aria-label="Close sidebar">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+      </div>
+      <div class="sidebar-content">
+        <p class="sidebar-placeholder">Chat history will appear here in a future update.</p>
+      </div>
+    </aside>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- Chat Area -->
+    <main id="chat-area" class="chat-area">
+      <style id="cdp-styles"></style>
+      <div id="chat-content" class="chat-content"></div>
+      <div id="empty-state" class="empty-state">
+        <span class="material-symbols-rounded empty-icon">chat_bubble_outline</span>
+        <p class="empty-title">No active chat</p>
+        <p class="empty-subtitle">Waiting for Antigravity connection...</p>
+      </div>
+    </main>
+
+    <!-- Scroll-to-bottom FAB -->
+    <button id="scroll-fab" class="scroll-fab" aria-label="Scroll to bottom">
+      <span class="material-symbols-rounded">keyboard_arrow_down</span>
+    </button>
+
+    <!-- Input Bar -->
+    <footer id="input-bar" class="input-bar">
+      <div class="input-wrapper">
+        <textarea
+          id="message-input"
+          class="message-input"
+          placeholder="Send a message..."
+          rows="1"
+          autocomplete="off"
+          autocorrect="on"
+          autocapitalize="sentences"
+        ></textarea>
+        <button id="action-btn" class="action-btn" data-action="send" aria-label="Send message">
+          <span class="material-symbols-rounded action-icon" id="action-icon">arrow_upward</span>
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
