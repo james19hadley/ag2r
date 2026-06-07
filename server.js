@@ -231,7 +231,7 @@ async function evaluateInBrowser(expression, opts = {}) {
       });
 
       if (result.exceptionDetails) {
-        console.debug('[CDP] Eval exception in context', ctx.id, result.exceptionDetails.text);
+        console.debug('[CDP] Eval exception in context', ctx.id, result.exceptionDetails.text, JSON.stringify(result.exceptionDetails.exception || {}).substring(0, 200));
         continue;
       }
 
@@ -252,11 +252,42 @@ async function evaluateInBrowser(expression, opts = {}) {
 // ─────────────────────────────────────────────
 
 // The capture script runs IN the Antigravity browser context.
-// Pattern: mark → clone → unmark original → process clone → return
-// Also captures the right sidebar (Review/Overview panel) and tags interactive elements
+// Captures: chat container (with cleanup) + left sidebar + right sidebar (raw clones)
+// Tags interactive elements across all three areas for click proxying
+// Click IDs are prefixed: chat:N, left:N, right:N
 const CAPTURE_SCRIPT = `
 (async () => {
-  // 1. Find the chat container
+  // -- Helper: tag interactive elements for click proxying --
+  function tagInteractives(root, prefix, skipVisibilityCheck) {
+    let idx = 0;
+    const tagged = [];
+    root.querySelectorAll('button, a, [role="button"]').forEach(el => {
+      if (skipVisibilityCheck || el.offsetParent !== null) {
+        el.setAttribute('data-ag-click-id', prefix + ':' + idx);
+        el.setAttribute('data-ag-click-label', (el.textContent || '').trim().substring(0, 50));
+        idx++;
+        tagged.push(el);
+      }
+    });
+    root.querySelectorAll('[class*="cursor-pointer"]').forEach(el => {
+      if ((skipVisibilityCheck || el.offsetParent !== null) && !el.hasAttribute('data-ag-click-id')) {
+        el.setAttribute('data-ag-click-id', prefix + ':' + idx);
+        el.setAttribute('data-ag-click-label', (el.textContent || '').trim().substring(0, 50));
+        idx++;
+        tagged.push(el);
+      }
+    });
+    return tagged;
+  }
+
+  function untagAll(tagged) {
+    tagged.forEach(el => {
+      el.removeAttribute('data-ag-click-id');
+      el.removeAttribute('data-ag-click-label');
+    });
+  }
+
+  // -- 1. Find the chat container --
   const container =
     document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
     document.querySelector('[data-testid="conversation-view"]') ||
@@ -266,20 +297,20 @@ const CAPTURE_SCRIPT = `
 
   if (!container) return null;
 
-  // 2. Detect if agent is generating (stop button visible)
+  // -- 2. Detect if agent is generating --
   const stopBtn =
     document.querySelector('[data-tooltip-id="input-send-button-cancel-tooltip"]') ||
     document.querySelector('button svg.lucide-square')?.closest('button');
   const agentRunning = !!(stopBtn && stopBtn.offsetParent !== null);
 
-  // 3. Scroll info
+  // -- 3. Scroll info --
   const scrollInfo = {
     scrollTop: container.scrollTop,
     scrollHeight: container.scrollHeight,
     clientHeight: container.clientHeight,
   };
 
-  // 4. Mark special positioned elements on the ORIGINAL dom
+  // -- 4. Mark positioned elements + tag chat interactives --
   const marked = [];
   container.querySelectorAll('*').forEach(el => {
     try {
@@ -294,82 +325,48 @@ const CAPTURE_SCRIPT = `
       }
     } catch {}
   });
+  const chatTagged = tagInteractives(container, 'chat');
 
-  // 4b. Tag interactive elements for click proxying
-  let clickIdx = 0;
-  const clickMarked = [];
-  container.querySelectorAll('button, a, [role="button"]').forEach(el => {
-    if (el.offsetParent !== null && el.textContent.trim()) {
-      el.setAttribute('data-ag-click-id', String(clickIdx));
-      el.setAttribute('data-ag-click-label', el.textContent.trim().substring(0, 50));
-      clickIdx++;
-      clickMarked.push(el);
-    }
-  });
-
-  // 5. Deep clone
+  // -- 5. Clone chat container --
   const clone = container.cloneNode(true);
 
-  // 6. Unmark original DOM immediately
+  // -- 6. Unmark originals --
   marked.forEach(el => {
     el.removeAttribute('data-ag-remove');
     el.removeAttribute('data-ag-sticky');
   });
-  clickMarked.forEach(el => {
-    el.removeAttribute('data-ag-click-id');
-    el.removeAttribute('data-ag-click-label');
-  });
+  untagAll(chatTagged);
 
-  // 7. Clean the clone — remove editor/input area
-  const editorSels = [
-    '[contenteditable="true"]',
-    '[data-lexical-editor]',
-    '[role="textbox"]',
-    'form',
-  ];
-  editorSels.forEach(sel => {
+  // -- 7. Clean clone: remove editor/input --
+  ['[contenteditable="true"]', '[data-lexical-editor]', '[role="textbox"]', 'form'].forEach(sel => {
     clone.querySelectorAll(sel).forEach(el => {
-      // Walk up to a direct child of clone and remove
       let target = el;
       while (target.parentElement && target.parentElement !== clone) {
-        // Protect action bars (Allow/Deny/Review buttons)
-        const hasActionBtn = target.parentElement.querySelector(
-          'button, [role="button"]'
-        );
-        const actionText = hasActionBtn?.textContent?.trim() || '';
-        if (/^(Allow|Deny|Review|Run|Confirm|Accept|Reject)/i.test(actionText)) {
-          // Don't walk up past action bars
-          break;
-        }
+        const btn = target.parentElement.querySelector('button, [role="button"]');
+        if (/^(Allow|Deny|Review|Run|Confirm|Accept|Reject)/i.test(btn?.textContent?.trim() || '')) break;
         target = target.parentElement;
       }
-      if (target.parentElement === clone) {
-        target.remove();
-      } else {
-        el.remove();
-      }
+      if (target.parentElement === clone) target.remove();
+      else el.remove();
     });
   });
 
-  // 8. Remove fixed/absolute overlays (but protect action bars)
+  // -- 8. Remove fixed/absolute overlays (protect action bars) --
   clone.querySelectorAll('[data-ag-remove]').forEach(el => {
-    const btns = el.querySelectorAll('button, [role="button"]');
     let isActionBar = false;
-    btns.forEach(b => {
-      if (/^(Allow|Deny|Review|Run|Confirm)/i.test(b.textContent?.trim())) {
-        isActionBar = true;
-      }
+    el.querySelectorAll('button, [role="button"]').forEach(b => {
+      if (/^(Allow|Deny|Review|Run|Confirm)/i.test(b.textContent?.trim())) isActionBar = true;
     });
     if (!isActionBar) el.remove();
     else el.removeAttribute('data-ag-remove');
   });
 
-  // 9. Force solid backgrounds on sticky elements
+  // -- 9. Force sticky backgrounds --
   clone.querySelectorAll('[data-ag-sticky]').forEach(el => {
     el.style.backgroundColor = '#0f172a';
   });
 
-  // 10. Fix inline div-inside-span/p (AG nests block inside inline)
+  // -- 10. Fix inline div-inside-span/p --
   clone.querySelectorAll('span > div, p > div').forEach(div => {
     const span = document.createElement('span');
     span.innerHTML = div.innerHTML;
@@ -381,12 +378,10 @@ const CAPTURE_SCRIPT = `
     div.replaceWith(span);
   });
 
-  // 11. Force paragraph display block (AG2.0 uses flex on .animate-markdown)
-  clone.querySelectorAll('p').forEach(p => {
-    p.style.display = 'block';
-  });
+  // -- 11. Force paragraph display block --
+  clone.querySelectorAll('p').forEach(p => { p.style.display = 'block'; });
 
-  // 12. Get HTML and strip broken [object Object] class names (streaming bug)
+  // -- 12. Get chat HTML + strip [object Object] --
   let html = clone.innerHTML;
   html = html.replace(/class="([^"]*)"/g, (match, classes) => {
     if (!classes.includes('[object Object]')) return match;
@@ -394,60 +389,82 @@ const CAPTURE_SCRIPT = `
     return 'class="' + cleaned + '"';
   });
 
-  // 13. Collect CSS from all accessible stylesheets
+  // -- 13. Collect CSS --
   let css = '';
   for (const sheet of document.styleSheets) {
     try {
-      for (const rule of sheet.cssRules) {
-        css += rule.cssText + '\\n';
-      }
+      for (const rule of sheet.cssRules) { css += rule.cssText + '\\n'; }
     } catch {}
   }
 
-  // 14. Capture the right sidebar (Review/Overview panel)
-  // Strategy: find elements positioned on the right half of the viewport
-  // that contain the Review tab structure
-  let sidebarHtml = null;
+  // -- 14. Capture LEFT sidebar (bg-sidebar) --
+  let leftSidebarHtml = null;
   try {
-    const vw = window.innerWidth;
-    const midpoint = vw * 0.4;
+    const leftRoot = document.querySelector('[class*="bg-sidebar"]');
+    if (leftRoot && leftRoot.offsetParent !== null) {
+      const leftTagged = tagInteractives(leftRoot, 'left');
+      const leftClone = leftRoot.cloneNode(true);
+      untagAll(leftTagged);
+      leftSidebarHtml = leftClone.outerHTML;
+    }
+  } catch (e) {
+    console.debug('[AG2R] Left sidebar capture error:', e.message);
+  }
 
-    // Look for the panel root containing Overview/Review tabs
-    // It's a div with class containing "flex flex-col" positioned right of center
-    const candidates = document.querySelectorAll('div');
+  // -- 15. Capture RIGHT sidebar (Overview/Review panel) --
+  // Use stable anchors: data-tab-id, close-aux-pane button
+  let rightSidebarHtml = null;
+  try {
     let sidebarRoot = null;
 
-    for (const el of candidates) {
-      const rect = el.getBoundingClientRect();
-      if (rect.left < midpoint || rect.width < 100 || rect.height < 200) continue;
+    // Strategy 1: Find via tab-id buttons (always present in the panel)
+    const tabBtn = document.querySelector('[data-tab-id="overview"], [data-tab-id="review"]');
+    if (tabBtn) {
+      // Walk up to find the flex-col root container
+      let el = tabBtn;
+      for (let i = 0; i < 10 && el; i++) {
+        el = el.parentElement;
+        const cls = el?.className?.toString?.() || '';
+        if (cls.includes('flex') && cls.includes('flex-col') && el.children.length >= 2) {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 100 && rect.height > 200) {
+            sidebarRoot = el;
+            break;
+          }
+        }
+      }
+    }
 
-      // Check if this element contains the tab bar with Overview/Review text
-      const text = el.textContent || '';
-      if (text.includes('Overview') && text.includes('Review')) {
-        // Found a candidate — pick the outermost one at this position
-        if (!sidebarRoot || rect.width >= sidebarRoot.getBoundingClientRect().width) {
-          // Prefer the one closest to the right edge viewport match
-          const cls = el.className?.toString?.() || '';
+    // Strategy 2: Find via close-aux-pane button
+    if (!sidebarRoot) {
+      const closeBtn = document.querySelector('[data-testid="close-aux-pane"]');
+      if (closeBtn) {
+        let el = closeBtn;
+        for (let i = 0; i < 10 && el; i++) {
+          el = el.parentElement;
+          const cls = el?.className?.toString?.() || '';
           if (cls.includes('flex') && cls.includes('flex-col') && el.children.length >= 2) {
             sidebarRoot = el;
-            break; // First matching flex-col with 2+ children is likely the right one
+            break;
           }
         }
       }
     }
 
     if (sidebarRoot) {
-      const sidebarClone = sidebarRoot.cloneNode(true);
-      sidebarHtml = sidebarClone.innerHTML;
+      const rightTagged = tagInteractives(sidebarRoot, 'right', true);
+      const rightClone = sidebarRoot.cloneNode(true);
+      untagAll(rightTagged);
+      rightSidebarHtml = rightClone.outerHTML;
     }
   } catch (e) {
-    // Sidebar capture is best-effort — don't fail the whole snapshot
-    console.debug('[AG2R] Sidebar capture error:', e.message);
+    console.debug('[AG2R] Right sidebar capture error:', e.message);
   }
 
-  return { html, css, agentRunning, scrollInfo, sidebarHtml };
+  return { html, css, agentRunning, scrollInfo, leftSidebarHtml, rightSidebarHtml };
 })()
 `;
+
 
 
 async function captureSnapshot() {
@@ -600,7 +617,11 @@ function startPolling() {
       const snapshot = await captureSnapshot();
 
       if (snapshot) {
-        const hash = hashString(snapshot.html);
+        const hash = hashString(
+          snapshot.html +
+          (snapshot.leftSidebarHtml || '') +
+          (snapshot.rightSidebarHtml || '')
+        );
 
         // Only broadcast and update cache when content actually changes
         if (hash !== lastSnapshotHash) {
@@ -766,16 +787,18 @@ app.get('/snapshot', (req, res) => {
     hash: cachedSnapshot.hash,
     agentRunning: cachedSnapshot.agentRunning,
     scrollInfo: cachedSnapshot.scrollInfo,
-    sidebarHtml: cachedSnapshot.sidebarHtml || null,
+    leftSidebarHtml: cachedSnapshot.leftSidebarHtml || null,
+    rightSidebarHtml: cachedSnapshot.rightSidebarHtml || null,
   });
 });
 
 // --- Click Proxy (forward clicks to real AG DOM) ---
+// Click IDs are prefixed: chat:N, left:N, right:N
 app.post('/click', async (req, res) => {
   const { clickId, label } = req.body;
   log('Click', `Proxying click id=${clickId} label="${label}"`);
 
-  if (clickId === undefined || clickId === null) {
+  if (!clickId && clickId !== 0) {
     return res.status(400).json({ error: 'clickId is required' });
   }
 
@@ -786,32 +809,61 @@ app.post('/click', async (req, res) => {
   try {
     const clickScript = `
     (async () => {
-      const container =
-        document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
-        document.querySelector('[data-testid="conversation-view"]') ||
-        document.getElementById('conversation') ||
-        document.getElementById('chat') ||
-        document.getElementById('cascade');
-      if (!container) return { ok: false, reason: 'no_container' };
-
-      const interactives = container.querySelectorAll('button, a, [role="button"]');
-      // Build the same index as capture — only visible elements with text
-      const visible = [];
-      interactives.forEach(el => {
-        if (el.offsetParent !== null && el.textContent.trim()) {
-          visible.push(el);
-        }
-      });
-
-      const idx = ${JSON.stringify(clickId)};
+      const clickId = ${JSON.stringify(String(clickId))};
       const expectedLabel = ${JSON.stringify(label || '')};
+
+      // Parse prefix:index
+      const colonIdx = clickId.indexOf(':');
+      if (colonIdx === -1) return { ok: false, reason: 'invalid_click_id' };
+      const source = clickId.substring(0, colonIdx);
+      const idx = parseInt(clickId.substring(colonIdx + 1), 10);
+
+      // Find the root element based on source
+      let root = null;
+      if (source === 'chat') {
+        root =
+          document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
+          document.querySelector('[data-testid="conversation-view"]') ||
+          document.getElementById('conversation') ||
+          document.getElementById('chat') ||
+          document.getElementById('cascade');
+      } else if (source === 'left') {
+        root = document.querySelector('[class*="bg-sidebar"]');
+      } else if (source === 'right') {
+        // Anchor-based: find via tab-id buttons or close-aux-pane
+        const tabBtn = document.querySelector('[data-tab-id="overview"], [data-tab-id="review"]');
+        const anchor = tabBtn || document.querySelector('[data-testid="close-aux-pane"]');
+        if (anchor) {
+          let el = anchor;
+          for (let i = 0; i < 10 && el; i++) {
+            el = el.parentElement;
+            const cls = el?.className?.toString?.() || '';
+            if (cls.includes('flex') && cls.includes('flex-col') && el.children.length >= 2) {
+              root = el;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!root) return { ok: false, reason: 'no_root_for_' + source };
+
+      // Build the same interactive element list as capture
+      const skipVis = (source === 'right'); // Right sidebar may be hidden on desktop
+      const visible = [];
+      root.querySelectorAll('button, a, [role="button"]').forEach(el => {
+        if (skipVis || el.offsetParent !== null) visible.push(el);
+      });
+      root.querySelectorAll('[class*="cursor-pointer"]').forEach(el => {
+        if ((skipVis || el.offsetParent !== null) && !visible.includes(el)) visible.push(el);
+      });
 
       if (idx < 0 || idx >= visible.length) {
         return { ok: false, reason: 'index_out_of_range', total: visible.length };
       }
 
       const target = visible[idx];
-      const actualLabel = target.textContent.trim().substring(0, 50);
+      const actualLabel = (target.textContent || '').trim().substring(0, 50);
 
       // Validate label matches (if provided) to prevent stale clicks
       if (expectedLabel && actualLabel !== expectedLabel) {
@@ -819,7 +871,7 @@ app.post('/click', async (req, res) => {
       }
 
       target.click();
-      return { ok: true, label: actualLabel };
+      return { ok: true, label: actualLabel, source };
     })()
     `;
 

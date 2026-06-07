@@ -18,15 +18,15 @@
 <body>
   <div id="app" class="app">
 
-    <!-- Header -->
+    <!-- Header — minimal, AG's captured components handle sidebar toggles -->
     <header id="header" class="header">
       <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle sidebar">
         <span class="material-symbols-rounded">menu</span>
       </button>
       <h1 class="header-title">AG2R</h1>
       <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected"></div>
-      <button id="review-toggle" class="icon-btn review-toggle" aria-label="Toggle review panel" title="Review Changes">
-        <span class="material-symbols-rounded">difference</span>
+      <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review">
+        <span class="material-symbols-rounded">right_panel_open</span>
         <span id="review-badge" class="review-badge hidden"></span>
       </button>
       <button id="settings-btn" class="icon-btn" aria-label="Settings">
@@ -34,36 +34,17 @@
       </button>
     </header>
 
-    <!-- Left Sidebar (stub — not functional yet) -->
-    <aside id="sidebar" class="sidebar" inert>
-      <div class="sidebar-header">
-        <h2>Chats</h2>
-        <button id="sidebar-close" class="icon-btn" aria-label="Close sidebar">
-          <span class="material-symbols-rounded">close</span>
-        </button>
-      </div>
-      <div class="sidebar-content">
-        <p class="sidebar-placeholder">Chat history will appear here in a future update.</p>
-      </div>
+    <!-- Left Sidebar — receives AG's captured sidebar content -->
+    <aside id="left-sidebar" class="left-sidebar" inert>
+      <style id="left-sidebar-cdp-styles"></style>
+      <div id="left-sidebar-content" class="sidebar-fill"></div>
     </aside>
-    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="left-sidebar-overlay" class="sidebar-overlay"></div>
 
-    <!-- Right Sidebar (Review/Artifacts Panel) -->
+    <!-- Right Sidebar — receives AG's captured review panel content -->
     <aside id="right-sidebar" class="right-sidebar" inert>
-      <div class="sidebar-header">
-        <h2>Review</h2>
-        <button id="right-sidebar-close" class="icon-btn" aria-label="Close review panel">
-          <span class="material-symbols-rounded">close</span>
-        </button>
-      </div>
       <style id="right-sidebar-cdp-styles"></style>
-      <div id="right-sidebar-content" class="sidebar-content right-sidebar-inner">
-        <div id="right-sidebar-empty" class="sidebar-placeholder">
-          <span class="material-symbols-rounded" style="font-size: 32px; opacity: 0.3; margin-bottom: 8px;">difference</span>
-          <p>No review content available</p>
-          <p style="font-size: 11px; margin-top: 4px;">Review panel will appear when the agent makes code changes</p>
-        </div>
-      </div>
+      <div id="right-sidebar-content" class="sidebar-fill"></div>
     </aside>
     <div id="right-sidebar-overlay" class="sidebar-overlay"></div>
 

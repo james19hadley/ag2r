@@ -25,17 +25,18 @@ const actionBtn = document.getElementById('action-btn');
 const actionIcon = document.getElementById('action-icon');
 const connectionDot = document.getElementById('connection-status');
 const sidebarToggle = document.getElementById('sidebar-toggle');
-const sidebar = document.getElementById('sidebar');
-const sidebarClose = document.getElementById('sidebar-close');
 const reviewToggle = document.getElementById('review-toggle');
 const reviewBadge = document.getElementById('review-badge');
+// Left sidebar (AG's chat list)
+const leftSidebar = document.getElementById('left-sidebar');
+const leftSidebarContent = document.getElementById('left-sidebar-content');
+const leftSidebarCdpStyles = document.getElementById('left-sidebar-cdp-styles');
+const leftSidebarOverlay = document.getElementById('left-sidebar-overlay');
+// Right sidebar (AG's review panel)
 const rightSidebar = document.getElementById('right-sidebar');
-const rightSidebarClose = document.getElementById('right-sidebar-close');
 const rightSidebarContent = document.getElementById('right-sidebar-content');
-const rightSidebarEmpty = document.getElementById('right-sidebar-empty');
-const rightSidebarOverlay = document.getElementById('right-sidebar-overlay');
 const rightSidebarCdpStyles = document.getElementById('right-sidebar-cdp-styles');
-const sidebarOverlay = document.getElementById('sidebar-overlay');
+const rightSidebarOverlay = document.getElementById('right-sidebar-overlay');
 
 // ─────────────────────────────────────────────
 // Fetch Wrapper (redirects to login on 401)
@@ -159,10 +160,10 @@ async function loadSnapshot() {
       updateActionButton();
     }
 
-    // Inject CSS (Antigravity's stylesheets)
+    // Inject CSS (Antigravity's stylesheets) into all panels
     if (data.css) {
       cdpStyles.textContent = data.css;
-      // Also inject into right sidebar so captured content inherits AG styles
+      leftSidebarCdpStyles.textContent = data.css;
       rightSidebarCdpStyles.textContent = data.css;
     }
 
@@ -177,11 +178,17 @@ async function loadSnapshot() {
     // Add mobile copy buttons to code blocks
     addMobileCopyButtons();
 
-    // Wire up click proxying for interactive elements
-    addClickProxyHandlers();
+    // Wire up click proxying for interactive elements across all areas
+    addClickProxyHandlers(chatContent);
 
-    // Render right sidebar content
-    renderSidebarContent(data.sidebarHtml, data.css);
+    // Render both sidebars with AG's captured content
+    renderSidebar(leftSidebarContent, data.leftSidebarHtml);
+    renderSidebar(rightSidebarContent, data.rightSidebarHtml);
+    addClickProxyHandlers(leftSidebarContent);
+    addClickProxyHandlers(rightSidebarContent);
+
+    // Update review badge
+    reviewBadge.classList.toggle('hidden', !data.rightSidebarHtml);
 
     // Auto-scroll: only if user was already near the bottom
     requestAnimationFrame(() => {
@@ -402,26 +409,25 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 // ─────────────────────────────────────────────
-// Left Sidebar
+// Left Sidebar (AG's captured chat list)
 // ─────────────────────────────────────────────
-function openSidebar() {
-  sidebar.classList.add('open');
-  sidebar.inert = false;
-  sidebarOverlay.classList.add('visible');
+function openLeftSidebar() {
+  leftSidebar.classList.add('open');
+  leftSidebar.inert = false;
+  leftSidebarOverlay.classList.add('visible');
 }
 
-function closeSidebar() {
-  sidebar.classList.remove('open');
-  sidebar.inert = true;
-  sidebarOverlay.classList.remove('visible');
+function closeLeftSidebar() {
+  leftSidebar.classList.remove('open');
+  leftSidebar.inert = true;
+  leftSidebarOverlay.classList.remove('visible');
 }
 
-sidebarToggle.addEventListener('click', openSidebar);
-sidebarClose.addEventListener('click', closeSidebar);
-sidebarOverlay.addEventListener('click', closeSidebar);
+sidebarToggle.addEventListener('click', openLeftSidebar);
+leftSidebarOverlay.addEventListener('click', closeLeftSidebar);
 
 // ─────────────────────────────────────────────
-// Right Sidebar (Review Panel)
+// Right Sidebar (AG's captured review panel)
 // ─────────────────────────────────────────────
 function openRightSidebar() {
   rightSidebar.classList.add('open');
@@ -435,71 +441,63 @@ function closeRightSidebar() {
   rightSidebarOverlay.classList.remove('visible');
 }
 
-reviewToggle.addEventListener('click', openRightSidebar);
-rightSidebarClose.addEventListener('click', closeRightSidebar);
+function toggleRightSidebar() {
+  if (rightSidebar.classList.contains('open')) closeRightSidebar();
+  else openRightSidebar();
+}
+
+reviewToggle.addEventListener('click', toggleRightSidebar);
 rightSidebarOverlay.addEventListener('click', closeRightSidebar);
 
-function renderSidebarContent(sidebarHtml) {
-  if (sidebarHtml) {
-    // Clear empty state and inject captured sidebar HTML
-    rightSidebarEmpty.classList.add('hidden');
-    // Preserve any existing content container or create one
-    let contentDiv = rightSidebarContent.querySelector('.right-sidebar-captured');
-    if (!contentDiv) {
-      contentDiv = document.createElement('div');
-      contentDiv.className = 'right-sidebar-captured';
-      rightSidebarContent.appendChild(contentDiv);
+// ─────────────────────────────────────────────
+// Sidebar Content Rendering
+// ─────────────────────────────────────────────
+function renderSidebar(container, html) {
+  if (html) {
+    // Fix invalid nested <button> elements: AG nests close-buttons inside tab buttons.
+    // Browsers reject nested <button> in innerHTML, breaking the DOM structure.
+    // Convert inner close buttons (hidden group-hover:flex) to <span> to preserve nesting.
+    html = html.replace(
+      /<button(\s+(?:type="button"\s+)?class="hidden group-hover:flex[^"]*"[^>]*)>([\s\S]*?)<\/button>/g,
+      '<span$1>$2</span>'
+    );
+    container.innerHTML = html;
+    // Strip all h-full classes — they create percentage-height chains that
+    // collapse to zero. Let content size intrinsically so overflow scrolls.
+    container.querySelectorAll('.h-full').forEach(el => {
+      el.classList.remove('h-full');
+    });
+
+    // Fix tab bar: ensure tab buttons show text and bar scrolls horizontally
+    container.querySelectorAll('button[data-tab-id]').forEach(btn => {
+      btn.classList.remove('overflow-hidden');
+    });
+    // The scrollable tab bar container has overflow-x-auto but may lack nowrap
+    const scrollableBar = container.querySelector('.overflow-x-auto');
+    if (scrollableBar) {
+      scrollableBar.style.flexWrap = 'nowrap';
     }
-    contentDiv.innerHTML = sidebarHtml;
-    // Show the review badge
-    reviewBadge.classList.remove('hidden');
-  } else {
-    // No sidebar content — show empty state
-    rightSidebarEmpty.classList.remove('hidden');
-    const contentDiv = rightSidebarContent.querySelector('.right-sidebar-captured');
-    if (contentDiv) contentDiv.remove();
-    reviewBadge.classList.add('hidden');
   }
 }
 
 // ─────────────────────────────────────────────
-// Click Proxying
+// Click Proxying — generic for any container
 // ─────────────────────────────────────────────
-function addClickProxyHandlers() {
-  chatContent.querySelectorAll('[data-ag-click-id]').forEach(el => {
-    // Skip if already wired
+function addClickProxyHandlers(container) {
+  let wiredCount = 0;
+  container.querySelectorAll('[data-ag-click-id]').forEach(el => {
     if (el.dataset.agClickWired) return;
     el.dataset.agClickWired = '1';
+    wiredCount++;
 
     el.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
 
-      const clickId = parseInt(el.dataset.agClickId, 10);
+      const clickId = el.dataset.agClickId; // e.g. "chat:5", "right:2"
       const label = el.dataset.agClickLabel || '';
+      console.debug('[Click] Firing:', clickId, label);
 
-      // Check if this is a "Review" button — open sidebar instead of proxying
-      if (/^Review$/i.test(label.trim())) {
-        // Proxy the click AND open sidebar
-        el.classList.add('ag-clicking');
-        try {
-          await fetchAPI('/click', {
-            method: 'POST',
-            body: JSON.stringify({ clickId, label }),
-          });
-        } catch (err) {
-          console.debug('[Click] Proxy error:', err.message);
-        }
-        el.classList.remove('ag-clicking');
-        openRightSidebar();
-        // Refresh snapshot to pick up sidebar changes
-        setTimeout(loadSnapshot, 300);
-        setTimeout(loadSnapshot, 800);
-        setTimeout(loadSnapshot, 2000);
-        return;
-      }
-
-      // General click proxying
       el.classList.add('ag-clicking');
       try {
         const res = await fetchAPI('/click', {
@@ -507,18 +505,31 @@ function addClickProxyHandlers() {
           body: JSON.stringify({ clickId, label }),
         });
         const result = await res.json();
-        console.debug('[Click] Result:', result);
+        console.debug('[Click]', clickId, result);
       } catch (err) {
         console.debug('[Click] Error:', err.message);
       }
       el.classList.remove('ag-clicking');
 
-      // Refresh snapshot to pick up changes from the click
+      // If this was a Review or artifact-related click, also open right sidebar
+      if (/^Review$/i.test(label.trim()) || clickId.startsWith('chat:')) {
+        // Artifact cards and Review buttons in chat should open the review panel
+        const isReview = /^Review$/i.test(label.trim());
+        const isArtifact = el.closest('[class*="cursor-pointer"]') && !el.matches('button, a');
+        if (isReview || isArtifact) {
+          openRightSidebar();
+        }
+      }
+
+      // Refresh snapshots to pick up changes
       setTimeout(loadSnapshot, 300);
       setTimeout(loadSnapshot, 800);
       setTimeout(loadSnapshot, 2000);
     });
   });
+  if (wiredCount > 0) {
+    console.debug('[Click] Wired', wiredCount, 'elements in', container.id);
+  }
 }
 
 // ─────────────────────────────────────────────
