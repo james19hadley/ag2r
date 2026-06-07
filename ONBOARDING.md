@@ -28,8 +28,10 @@
 | Client rendering, WebSocket, stop/send | `public/js/app.js` |
 | Mobile UI structure | `public/index.html` |
 | Login page | `public/login.html` |
-| Mobile-first styles | `public/css/style.css` |
-| Environment config template | `.env.example` |
+| Mobile-first styles + CDP content overrides | `public/css/style.css` |
+| Environment config template (SSoT for config) | `.env.example` |
+| Project dependencies (SSoT for versions) | `package.json` |
+| Self-signed SSL certs (auto-generated, gitignored) | `certs/` |
 
 ---
 
@@ -37,9 +39,15 @@
 
 > Things you would NOT discover by reading the code alone. Keep this section compact.
 
-<!-- Add gotchas as you discover them during development. -->
-
-*No gotchas documented yet — this section will grow as the project develops.*
+- **AG2.0 has no stable DOM IDs.** Unlike Windsurf (`#conversation`, `#chat`, `#cascade`), AG2.0 uses Tailwind classes. Chat container is found via `.scrollbar-hide[class*="overflow-y-auto"]` or `[data-testid="conversation-view"]`. Any selector-based approach is fragile.
+- **Two execution contexts.** AG2.0 Electron exposes default + isolated contexts that produce slightly different CSS. `server.js` locks to a `preferredContextId` to prevent hash oscillation. If you see alternating snapshots, this lock is failing.
+- **`[object Object]` class names during streaming.** AG2.0 wraps streaming words in `<span class="[object Object]">`. The capture script strips these via regex on the HTML string AFTER extraction (not DOM query — bracket chars break CSS selectors).
+- **Sticky user prompts.** User's last prompt has `position: sticky` with transparent background. The capture script marks these with `data-ag-sticky` and forces `backgroundColor: #0f172a` on the clone.
+- **`div` inside `span`/`p`.** AG2.0 nests block elements inside inline elements for file-type icons. Browsers auto-close the inline parent, causing line breaks. Capture script converts nested `<div>` to `<span style="display: inline-flex">`.
+- **`.animate-markdown` uses flex.** AG2.0 sets `display: flex` on `<p class="animate-markdown">`, which collapses whitespace between word spans. CSS override forces `display: inline !important`.
+- **Never wipe cached content.** If snapshot capture returns null (no chat container found), the server keeps the last valid snapshot. The client never clears `chatContent.innerHTML` based on a failed selector check.
+- **`inline-flex` CSS leak.** The override `[class*="inline-flex"]` matches text span containers (not just image containers). Always scope with `:has(img)`.
+- **Local network auth bypass.** Requests from 127.x/192.168.x/10.x are auto-authenticated, but only if no proxy headers (X-Forwarded-For, CF-Connecting-IP) are present.
 
 ---
 
