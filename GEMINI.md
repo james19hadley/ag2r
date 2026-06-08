@@ -72,11 +72,11 @@ Once the environment is ready, read these for context:
 
 6. **Debug first, never deflect.** Every failure on your branch is your problem until proven otherwise. The fix is often 2 minutes; deflecting costs 45 minutes and 3 CI cycles.
 
-7. **Every PR body MUST follow the 3-section format:** `## Summary` → `## What Changed` (mechanical + behavioral bullets) → `## Manual Test Steps` (`- [ ]` checkboxes only).
+7. **Every PR body MUST follow this format:** `## Summary` → `## What Changed` (mechanical + behavioral bullets) → `## Manual Test Steps` (`- [ ]` checkboxes only) → `## Related Issues` (if applicable). **If the work addresses a GitHub issue, `## Related Issues` is MANDATORY** — include `Closes #XX` for each resolved issue. Without this, GitHub won't auto-close the ticket and it rots open.
 
 8. **PR creation is NOT the finish line.** After `gh pr create`, you MUST: (a) `gh pr checks <PR#> --watch` to wait for CI, (b) if CI passes → `gh pr merge <PR#> --squash --admin`, (c) sync main. A session is not done until the PR is `MERGED` or the user explicitly says to stop. Never leave a PR unmerged and walk away. **If merge fails with "Required status check expected"**, your branch is behind main. Rebase: `git fetch origin main && git rebase origin/main && git push --force-with-lease`, then wait for CI to re-run before retrying merge.
 
-9. **PR title = `type: clean description`. No issue numbers.** Never write `fix: do something (#221)`. Issue references go in the body under `## Related Issues` using `Closes #XX` — GitHub auto-links and auto-closes.
+9. **PR title = `type: clean description`. No issue numbers.** Never write `fix: do something (#221)`. Issue references go in the body under `## Related Issues` using `Closes #XX`.
 
 ## 📋 Session Management
 
