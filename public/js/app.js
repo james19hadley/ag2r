@@ -307,9 +307,12 @@ async function loadSnapshot() {
       tempDiv.innerHTML = data.dropdownHtml;
       const allBtns = tempDiv.querySelectorAll('[data-ag-click-id]');
       if (allBtns.length > 0) {
+        // Options to hide from dropdown menus (e.g., Rename triggers inline sidebar edit, unusable in AG2R)
+        const HIDDEN_DROPDOWN_OPTIONS = /^rename$/i;
         let buttonsHtml = '';
         allBtns.forEach(btn => {
           const text = btn.textContent.trim();
+          if (HIDDEN_DROPDOWN_OPTIONS.test(text)) return;
           const id = btn.dataset.agClickId;
           const label = btn.dataset.agClickLabel || text;
           const isDestructive = /delete|remove/i.test(text);
