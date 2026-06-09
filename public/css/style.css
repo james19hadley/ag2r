@@ -306,15 +306,31 @@ body {
 }
 
 /* Per-session hover action strip — force visible on mobile (no hover available).
-   The strip contains 3 buttons: three-dot menu, pin, archive.
-   Only show the three-dot menu; hide pin and archive for now. */
+   The strip contains 3 buttons: three-dot menu, pin, archive. All shown.
+   Opaque background + left-edge gradient lets the conversation title fade beneath. */
 #left-sidebar-content .group-hover\:visible {
   visibility: visible !important;
+  position: relative;
+  background: hsl(var(--sidebar, 0 0% 8.5%));
+  gap: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 2px !important;
 }
 
-/* Hide pin and archive buttons (2nd and 3rd in the action strip) */
-#left-sidebar-content .group-hover\:visible button:nth-child(n+2) {
-  display: none !important;
+#left-sidebar-content .group-hover\:visible button {
+  padding: 2px !important;
+  min-width: 0 !important;
+}
+
+#left-sidebar-content .group-hover\:visible::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  background: linear-gradient(to right, transparent, hsl(var(--sidebar, 0 0% 8.5%)));
+  pointer-events: none;
 }
 
 /* Hide the default horizontal three-dots icon (shown when NOT hovered).
