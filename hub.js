@@ -339,6 +339,13 @@ function renderLandingPage() {
       margin-bottom: 32px;
     }
 
+    .hub-header img {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      margin-bottom: 12px;
+    }
+
     .hub-logo {
       font-size: 28px;
       font-weight: 700;
@@ -472,6 +479,7 @@ function renderLandingPage() {
 </head>
 <body>
   <div class="hub-header">
+    <img src="/ag2r-icon.png" alt="AG2R">
     <div class="hub-logo">AG2R Hub</div>
     <div class="hub-subtitle">Active Sessions</div>
   </div>
