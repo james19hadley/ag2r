@@ -72,6 +72,7 @@
     <!-- Input Bar -->
     <footer id="input-bar" class="input-bar">
       <div class="input-wrapper">
+        <div id="image-preview-strip" class="image-preview-strip hidden"></div>
         <textarea
           id="message-input"
           class="message-input"
@@ -82,6 +83,10 @@
           autocapitalize="sentences"
           enterkeyhint="enter"
         ></textarea>
+        <input type="file" id="photo-input" accept="image/*" capture="environment" multiple hidden>
+        <button id="attach-btn" class="attach-btn" aria-label="Attach photo" type="button">
+          <span class="material-symbols-rounded attach-icon">attach_file</span>
+        </button>
         <button id="mic-btn" class="mic-btn" aria-label="Voice input" type="button">
           <span class="material-symbols-rounded mic-icon">mic</span>
         </button>

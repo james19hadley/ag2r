@@ -8,7 +8,12 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["antigravity", "remote", "cdp", "ai"],
+  "keywords": [
+    "antigravity",
+    "remote",
+    "cdp",
+    "ai"
+  ],
   "license": "MIT",
   "dependencies": {
     "chrome-remote-interface": "^0.33.2",
@@ -16,6 +21,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "multer": "^2.1.1",
     "selfsigned": "^2.4.1",
     "ws": "^8.18.0"
   }

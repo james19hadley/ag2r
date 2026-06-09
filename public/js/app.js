@@ -656,7 +656,8 @@ function addMobileCopyButtons() {
 // ─────────────────────────────────────────────
 async function sendMessage() {
   const text = messageInput.value.trim();
-  if (!text || isSending) return;
+  const hasImages = stagedImages.length > 0;
+  if ((!text && !hasImages) || isSending) return;
 
   isSending = true;
 
@@ -668,38 +669,56 @@ async function sendMessage() {
   messageInput.blur();
   updateActionButton();
 
-  // Prepend any queued artifact comments to the message
-  const commentBlock = drainQueuedComments();
-  const fullMessage = commentBlock ? commentBlock + '\n' + text : text;
-
-  try {
-    const res = await fetchAPI('/send', {
-      method: 'POST',
-      body: JSON.stringify({ message: fullMessage }),
-    });
-
-    const result = await res.json();
-    console.debug('[Send] Result:', result);
-
-    if (!result.ok) {
-      console.debug('[Send] Failed:', result.reason);
+  // Upload staged images first (injects into AG's editor via CDP drop)
+  if (hasImages) {
+    const uploadOk = await uploadStagedImages();
+    if (!uploadOk) {
+      console.debug('[Send] Some image uploads failed');
+      // Don't clear images on failure — let user retry
+      isSending = false;
+      messageInput.disabled = false;
+      actionBtn.disabled = false;
+      return;
     }
-
-    // Reset scroll-away flag so AG's scroll position syncs immediately on next render
-    userScrolledAway = false;
-
-    // Schedule snapshot reloads to pick up the sent message
-    setTimeout(loadSnapshot, 300);
-    setTimeout(loadSnapshot, 800);
-    setTimeout(loadSnapshot, 2000);
-
-  } catch (e) {
-    console.debug('[Send] Error:', e.message);
-  } finally {
-    isSending = false;
-    messageInput.disabled = false;
-    actionBtn.disabled = false;
+    clearStagedImages();
+    // Brief delay to let AG process the dropped images
+    await new Promise(r => setTimeout(r, 300));
   }
+
+  // Send text message (if any)
+  if (text || !hasImages) {
+    // Prepend any queued artifact comments to the message
+    const commentBlock = drainQueuedComments();
+    const fullMessage = commentBlock ? commentBlock + '\n' + text : text;
+
+    try {
+      const res = await fetchAPI('/send', {
+        method: 'POST',
+        body: JSON.stringify({ message: fullMessage }),
+      });
+
+      const result = await res.json();
+      console.debug('[Send] Result:', result);
+
+      if (!result.ok) {
+        console.debug('[Send] Failed:', result.reason);
+      }
+    } catch (e) {
+      console.debug('[Send] Error:', e.message);
+    }
+  }
+
+  // Reset scroll-away flag so AG's scroll position syncs immediately on next render
+  userScrolledAway = false;
+
+  // Schedule snapshot reloads to pick up the sent message
+  setTimeout(loadSnapshot, 300);
+  setTimeout(loadSnapshot, 800);
+  setTimeout(loadSnapshot, 2000);
+
+  isSending = false;
+  messageInput.disabled = false;
+  actionBtn.disabled = false;
 }
 
 
@@ -729,8 +748,9 @@ async function stopGeneration() {
 // ─────────────────────────────────────────────
 function updateActionButton() {
   const hasText = messageInput.value.trim().length > 0;
+  const hasImages = stagedImages.length > 0;
 
-  if (agentRunning && !hasText) {
+  if (agentRunning && !hasText && !hasImages) {
     // Agent is running and input is empty → show Stop
     actionBtn.setAttribute('data-action', 'stop');
     actionBtn.setAttribute('aria-label', 'Stop generation');
@@ -742,7 +762,7 @@ function updateActionButton() {
     actionBtn.setAttribute('aria-label', 'Send message');
     actionIcon.textContent = 'arrow_upward';
 
-    if (hasText) {
+    if (hasText || hasImages) {
       actionBtn.classList.remove('disabled');
     } else {
       actionBtn.classList.add('disabled');
@@ -891,6 +911,140 @@ if (!SpeechRecognition) {
 }
 
 // ─────────────────────────────────────────────
+// Photo Upload (staged thumbnails, upload on send)
+// ─────────────────────────────────────────────
+const attachBtn = document.getElementById('attach-btn');
+const photoInput = document.getElementById('photo-input');
+const imagePreviewStrip = document.getElementById('image-preview-strip');
+const MAX_STAGED_IMAGES = 3;
+let stagedImages = []; // { file: File, objectUrl: string }
+
+function renderImagePreviewsInto(strip, btn) {
+  strip.innerHTML = '';
+  if (stagedImages.length === 0) {
+    strip.classList.add('hidden');
+    if (btn) btn.classList.remove('at-limit');
+    return;
+  }
+  strip.classList.remove('hidden');
+
+  stagedImages.forEach((item, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'image-preview-item';
+
+    const img = document.createElement('img');
+    img.src = item.objectUrl;
+    img.alt = item.file.name;
+    wrapper.appendChild(img);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', 'Remove image');
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      URL.revokeObjectURL(stagedImages[idx].objectUrl);
+      stagedImages.splice(idx, 1);
+      renderImagePreviewsInto(strip, btn);
+      updateActionButton();
+    });
+    wrapper.appendChild(removeBtn);
+
+    strip.appendChild(wrapper);
+  });
+
+  // Disable paperclip when at limit
+  if (btn) {
+    if (stagedImages.length >= MAX_STAGED_IMAGES) {
+      btn.classList.add('at-limit');
+    } else {
+      btn.classList.remove('at-limit');
+    }
+  }
+}
+
+// Shorthand for the main input bar
+function renderImagePreviews() {
+  renderImagePreviewsInto(imagePreviewStrip, attachBtn);
+}
+
+attachBtn.addEventListener('click', () => {
+  if (stagedImages.length >= MAX_STAGED_IMAGES) return;
+  photoInput.click();
+});
+
+photoInput.addEventListener('change', () => {
+  const files = Array.from(photoInput.files);
+  if (!files.length) return;
+
+  const remaining = MAX_STAGED_IMAGES - stagedImages.length;
+  const toAdd = files.slice(0, remaining);
+
+  for (const file of toAdd) {
+    stagedImages.push({ file, objectUrl: URL.createObjectURL(file) });
+  }
+  renderImagePreviews();
+  updateActionButton();
+
+  // Reset so the same files can be re-selected
+  photoInput.value = '';
+});
+
+// Upload all staged images to AG via /upload endpoint.
+// Returns true if all succeeded (or no images staged), false if any failed.
+async function uploadStagedImages() {
+  if (stagedImages.length === 0) return true;
+
+  // Mark thumbnails as uploading
+  imagePreviewStrip.querySelectorAll('.image-preview-item').forEach(el => {
+    el.classList.add('uploading');
+  });
+
+  let allOk = true;
+  const items = imagePreviewStrip.querySelectorAll('.image-preview-item');
+
+  for (let i = 0; i < stagedImages.length; i++) {
+    try {
+      const formData = new FormData();
+      formData.append('image', stagedImages[i].file);
+
+      const res = await fetch('/upload', {
+        method: 'POST',
+        body: formData,
+        headers: { 'ngrok-skip-browser-warning': '1' },
+      });
+
+      const result = await res.json();
+      console.debug('[Upload] Result:', result);
+
+      if (items[i]) items[i].classList.remove('uploading');
+
+      if (!res.ok || !result.ok) {
+        console.debug('[Upload] Error:', result.error || 'Unknown');
+        if (items[i]) items[i].classList.add('upload-error');
+        allOk = false;
+      }
+    } catch (e) {
+      console.debug('[Upload] Network error:', e.message);
+      if (items[i]) {
+        items[i].classList.remove('uploading');
+        items[i].classList.add('upload-error');
+      }
+      allOk = false;
+    }
+  }
+
+  return allOk;
+}
+
+// Clear staged images (called after successful send)
+function clearStagedImages() {
+  stagedImages.forEach(item => URL.revokeObjectURL(item.objectUrl));
+  stagedImages = [];
+  renderImagePreviews();
+}
+
+// ─────────────────────────────────────────────
 // Left Sidebar (AG's captured chat list)
 // ─────────────────────────────────────────────
 function openLeftSidebar() {
@@ -1029,12 +1183,17 @@ function renderNewSessionPage(container, data) {
         ${modelName ? `<div class="ag2r-new-session-model">${modelName}</div>` : ''}
       </div>
       <form id="ag2r-new-session-form" class="ag2r-new-session-form">
+        <div id="ag2r-ns-image-preview" class="image-preview-strip hidden"></div>
         <textarea
           id="ag2r-new-session-input"
           placeholder="Ask anything, @ to mention, / for actions"
           rows="3"
         ></textarea>
         <div class="ag2r-new-session-buttons">
+          <input type="file" id="ag2r-ns-photo-input" accept="image/*" multiple hidden>
+          <button type="button" id="ag2r-ns-attach" class="attach-btn" aria-label="Attach photo">
+            <span class="material-symbols-rounded attach-icon">attach_file</span>
+          </button>
           <button type="button" id="ag2r-new-session-mic" class="mic-btn" aria-label="Voice input">
             <span class="material-symbols-rounded mic-icon">mic</span>
           </button>
@@ -1058,36 +1217,76 @@ function renderNewSessionPage(container, data) {
   input.addEventListener('input', () => { userIsTyping = true; });
   input.addEventListener('blur', () => { userIsTyping = false; });
 
+  // Wire attach button to shared staged images
+  const nsAttachBtn = container.querySelector('#ag2r-ns-attach');
+  const nsPhotoInput = container.querySelector('#ag2r-ns-photo-input');
+  const nsPreviewStrip = container.querySelector('#ag2r-ns-image-preview');
+
+  nsAttachBtn.addEventListener('click', () => {
+    if (stagedImages.length >= MAX_STAGED_IMAGES) return;
+    nsPhotoInput.click();
+  });
+
+  nsPhotoInput.addEventListener('change', () => {
+    const files = Array.from(nsPhotoInput.files);
+    if (!files.length) return;
+    const remaining = MAX_STAGED_IMAGES - stagedImages.length;
+    for (const file of files.slice(0, remaining)) {
+      stagedImages.push({ file, objectUrl: URL.createObjectURL(file) });
+    }
+    // Render into the new session preview strip
+    renderImagePreviewsInto(nsPreviewStrip, nsAttachBtn);
+    nsPhotoInput.value = '';
+  });
+
   // Handle form submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
+    const hasImages = stagedImages.length > 0;
+    if (!text && !hasImages) return;
 
     // Disable input
     input.disabled = true;
     sendBtn.disabled = true;
     sendBtn.classList.add('sending');
 
-    try {
-      const res = await fetchAPI('/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
-      });
-      const result = await res.json();
-      console.debug('[NewSession] Send result:', result);
-      if (result.ok) {
-        input.value = '';
-        // AG will navigate to the new session — next snapshot refresh will pick it up
+    // Upload staged images first
+    if (hasImages) {
+      const uploadOk = await uploadStagedImages();
+      if (!uploadOk) {
+        console.debug('[NewSession] Some image uploads failed');
+        input.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('sending');
+        return;
       }
-    } catch (err) {
-      console.debug('[NewSession] Send error:', err);
-    } finally {
-      input.disabled = false;
-      sendBtn.disabled = false;
-      sendBtn.classList.remove('sending');
+      clearStagedImages();
+      renderImagePreviewsInto(nsPreviewStrip, nsAttachBtn);
+      await new Promise(r => setTimeout(r, 300));
     }
+
+    if (text) {
+      try {
+        const res = await fetchAPI('/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        const result = await res.json();
+        console.debug('[NewSession] Send result:', result);
+        if (result.ok) {
+          input.value = '';
+          // AG will navigate to the new session — next snapshot refresh will pick it up
+        }
+      } catch (err) {
+        console.debug('[NewSession] Send error:', err);
+      }
+    }
+
+    input.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.classList.remove('sending');
   });
 
   // Desktop: Enter to submit. Mobile: Enter inserts newline.

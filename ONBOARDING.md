@@ -36,6 +36,7 @@
 | Login page | `public/login.html` |
 | Mobile-first styles (minimal CDP overrides) | `public/css/style.css` |
 | Environment config template (SSoT for config) | `.env.example` |
+| Photo upload (POST /upload + CDP drop injection) | `server.js` — search `Upload Image` and `POST /upload` |
 | Project dependencies (SSoT for versions) | `package.json` |
 | Self-signed SSL certs (auto-generated, gitignored) | `certs/` |
 | PWA manifest (home screen icon + app metadata) | `public/manifest.json` |

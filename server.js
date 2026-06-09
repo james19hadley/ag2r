@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import selfsigned from 'selfsigned';
+import multer from 'multer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -27,6 +28,17 @@ const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '500');
 const AUTH_ENABLED = process.env.AUTH_ENABLED === 'true';
 const TUNNEL_ENABLED = process.env.TUNNEL_ENABLED === 'true';
 const TUNNEL_URL = process.env.TUNNEL_URL || '';
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
+
+// === Multer (file upload) ===
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files are allowed'));
+  },
+});
 
 // === Mutable State ===
 let cdpClient = null;
@@ -1360,6 +1372,88 @@ app.post('/eval', async (req, res) => {
     const result = await evaluateInBrowser(`${req.body.script}`);
     res.json({ result });
   } catch (e) { res.json({ error: e.message }); }
+});
+
+// --- Upload Image ---
+app.post('/upload', upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image file provided' });
+  }
+
+  if (!cdpClient) {
+    return res.status(503).json({ error: 'CDP not connected' });
+  }
+
+  const { buffer, mimetype, originalname } = req.file;
+  const base64 = buffer.toString('base64');
+  const fileName = originalname || 'photo.png';
+
+  log('Upload', `Received ${fileName} (${mimetype}, ${(buffer.length / 1024).toFixed(1)}KB)`);
+
+  try {
+    const result = await evaluateInBrowser(`
+    (async () => {
+      // Decode base64 to binary
+      const base64 = ${JSON.stringify(base64)};
+      const mimetype = ${JSON.stringify(mimetype)};
+      const fileName = ${JSON.stringify(fileName)};
+
+      const binaryStr = atob(base64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      const file = new File([bytes], fileName, { type: mimetype });
+
+      // Find the drop target — the editor or the chat area
+      const editorCandidates = document.querySelectorAll(
+        '[data-lexical-editor="true"], [contenteditable="true"][role="textbox"], [contenteditable="true"]'
+      );
+      let editor = null;
+      for (const el of editorCandidates) {
+        if (el.offsetParent !== null) editor = el;
+      }
+      if (!editor) return { ok: false, reason: 'no_editor' };
+
+      // Build DataTransfer with the file
+      const dt = new DataTransfer();
+      dt.items.add(file);
+
+      // Dispatch full drag sequence — React needs dragenter/dragover before drop
+      editor.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true }));
+      editor.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      editor.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+
+      return { ok: true, method: 'drop', fileName, size: bytes.length };
+    })()
+    `);
+
+    log('Upload', `Injection result: ${JSON.stringify(result)}`);
+
+    if (!result?.ok) {
+      return res.status(500).json({ error: result?.reason || 'Injection failed' });
+    }
+
+    res.json(result);
+  } catch (e) {
+    log('Upload', `Error: ${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Multer error handler (file too large, wrong type)
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: `File too large (max ${MAX_UPLOAD_SIZE / 1024 / 1024}MB)` });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  if (err.message === 'Only image files are allowed') {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
 });
 
 // --- Send Message ---

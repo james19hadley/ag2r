@@ -543,12 +543,19 @@ body {
 
 .input-wrapper {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 6px 6px 6px 16px;
+}
+
+/* Preview strip takes full row width above textarea */
+.input-wrapper > .image-preview-strip {
+  flex-basis: 100%;
+  margin-bottom: -4px;
 }
 
 .message-input {
@@ -568,6 +575,116 @@ body {
 
 .message-input::placeholder {
   color: var(--text-muted);
+}
+
+/* ── Image Preview Strip (staged uploads above input) ── */
+.image-preview-strip {
+  display: flex;
+  gap: 8px;
+  padding: 8px 4px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.image-preview-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.image-preview-strip.hidden {
+  display: none;
+}
+
+.image-preview-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-preview-item .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.image-preview-item .remove-btn:active {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.image-preview-item.uploading {
+  opacity: 0.5;
+}
+
+.image-preview-item.upload-error {
+  border-color: var(--red, #ef4444);
+}
+
+/* ── Attach Button (Photo Upload) ── */
+.attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.attach-btn:active {
+  background: var(--bg-hover);
+}
+
+.attach-btn .attach-icon {
+  font-size: 20px;
+  transform: rotate(-45deg);
+}
+
+.attach-btn.uploading {
+  color: var(--accent);
+  animation: mic-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.attach-btn.upload-success {
+  color: var(--green, #22c55e);
+}
+
+.attach-btn.upload-error {
+  color: var(--red, #ef4444);
+}
+
+.attach-btn.at-limit {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* ── Mic Button (Voice Input) ── */
