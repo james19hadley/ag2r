@@ -792,6 +792,9 @@ async function sendMessage() {
 
   isSending = true;
 
+  // Stop any active voice recording so onresult doesn't refill the input
+  if (stopMainMic) stopMainMic();
+
   // Clear and disable input to prevent any re-trigger
   messageInput.value = '';
   messageInput.style.height = 'auto';
@@ -958,47 +961,53 @@ messageInput.addEventListener('keydown', (e) => {
 const micBtn = document.getElementById('mic-btn');
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (!SpeechRecognition) {
-  micBtn.classList.add('unsupported');
-} else {
+// Shared factory: wires SpeechRecognition on any textarea + mic button pair.
+// Returns a stopRecording() function so callers (e.g. sendMessage) can kill
+// the mic before clearing input.
+//
+// Key design decisions:
+// - continuous:true — avoids per-utterance browser ding on mobile
+// - Idempotent onresult — rebuilds text from ALL results every call instead
+//   of accumulating. Mobile browsers re-fire events for already-finalized
+//   results (resultIndex doesn't advance), which breaks append-based logic.
+// - Null out onresult/onend in stopRecording — recognition.stop() is async;
+//   the browser fires one last onresult AFTER the caller clears the input,
+//   refilling it. Nulling handlers prevents this.
+function createVoiceInput(inputEl, btnEl) {
+  if (!SpeechRecognition) {
+    btnEl.classList.add('unsupported');
+    return null;
+  }
+
   let recognition = null;
   let isRecording = false;
-  // Text that was in the input before recording started
-  let preRecordingText = '';
 
-  function startRecording() {
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = navigator.language || 'en-US';
+  // baselineText: text in input before recording started, plus finals from
+  // any previous recognition sessions within this recording (after restarts).
+  // sessionFinals: finals from the current recognition session, rebuilt from
+  // ALL results on every onresult (idempotent — immune to resultIndex bugs
+  // on mobile where the browser re-fires events for already-finalized results).
+  let baselineText = '';
+  let sessionFinals = '';
 
-    preRecordingText = messageInput.value;
-    isRecording = true;
-    micBtn.classList.add('recording');
-    micBtn.setAttribute('aria-label', 'Stop recording');
-
+  function wireHandlers() {
     recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
+      // Use ONLY the last result's transcript. Mobile browsers produce
+      // cumulative results: each final contains the full text from session
+      // start, not just the new words. Concatenating all results duplicates
+      // everything. The last result always has the complete current text.
+      const latest = event.results[event.results.length - 1];
+      const text = latest[0].transcript.trim();
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
+      if (latest.isFinal) {
+        sessionFinals = text;
       }
 
-      // Append finalized text permanently, show interim as preview
-      if (finalTranscript) {
-        preRecordingText += (preRecordingText ? ' ' : '') + finalTranscript.trim();
-      }
-      messageInput.value = preRecordingText + (interimTranscript ? ' ' + interimTranscript : '');
+      inputEl.value = baselineText + (text ? (baselineText ? ' ' : '') + text : '');
 
       // Trigger auto-resize
-      messageInput.style.height = 'auto';
-      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
       updateActionButton();
     };
 
@@ -1008,11 +1017,31 @@ if (!SpeechRecognition) {
     };
 
     recognition.onend = () => {
-      // Auto-restart if still in recording mode (browser may stop after silence)
+      // Auto-restart if still in recording mode (browser may stop after
+      // silence). Merge session finals into baseline so the restarted
+      // session builds on top of them.
       if (isRecording) {
+        if (sessionFinals) {
+          baselineText += (baselineText ? ' ' : '') + sessionFinals;
+          sessionFinals = '';
+        }
         try { recognition.start(); } catch {}
       }
     };
+  }
+
+  function startRecording() {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+    wireHandlers();
+
+    baselineText = inputEl.value;
+    sessionFinals = '';
+    isRecording = true;
+    btnEl.classList.add('recording');
+    btnEl.setAttribute('aria-label', 'Stop recording');
 
     try {
       recognition.start();
@@ -1024,22 +1053,33 @@ if (!SpeechRecognition) {
 
   function stopRecording() {
     isRecording = false;
-    micBtn.classList.remove('recording');
-    micBtn.setAttribute('aria-label', 'Voice input');
+    btnEl.classList.remove('recording');
+    btnEl.setAttribute('aria-label', 'Voice input');
     if (recognition) {
+      // Null out handlers BEFORE stopping — recognition.stop() is async
+      // and fires a final onresult that would refill the input after
+      // sendMessage() clears it.
+      recognition.onresult = null;
+      recognition.onend = null;
+      recognition.onerror = null;
       try { recognition.stop(); } catch {}
       recognition = null;
     }
   }
 
-  micBtn.addEventListener('click', () => {
+  btnEl.addEventListener('click', () => {
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
     }
   });
+
+  return stopRecording;
 }
+
+// Wire main input bar mic button
+const stopMainMic = createVoiceInput(messageInput, micBtn);
 
 // ─────────────────────────────────────────────
 // Model Chip (existing conversation input bar)
@@ -1423,11 +1463,16 @@ function renderNewSessionPage(container, data) {
   });
 
   // Handle form submission
+  let nsIsSending = false;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
     const hasImages = stagedImages.length > 0;
-    if (!text && !hasImages) return;
+    if ((!text && !hasImages) || nsIsSending) return;
+    nsIsSending = true;
+
+    // Stop any active voice recording so onresult doesn't refill the input
+    if (stopNsMic) stopNsMic();
 
     // Disable input
     input.disabled = true;
@@ -1439,6 +1484,7 @@ function renderNewSessionPage(container, data) {
       const uploadOk = await uploadStagedImages();
       if (!uploadOk) {
         console.debug('[NewSession] Some image uploads failed');
+        nsIsSending = false;
         input.disabled = false;
         sendBtn.disabled = false;
         sendBtn.classList.remove('sending');
@@ -1467,6 +1513,7 @@ function renderNewSessionPage(container, data) {
       }
     }
 
+    nsIsSending = false;
     input.disabled = false;
     sendBtn.disabled = false;
     sendBtn.classList.remove('sending');
@@ -1480,54 +1527,11 @@ function renderNewSessionPage(container, data) {
     }
   });
 
-  // Wire up mic button for new session page
+  // Wire up mic button for new session page (shared factory)
   const nsMicBtn = container.querySelector('#ag2r-new-session-mic');
-  if (nsMicBtn && SpeechRecognition) {
-    let nsRecognition = null;
-    let nsIsRecording = false;
-    let nsPreText = '';
-
-    function nsStartRecording() {
-      nsRecognition = new SpeechRecognition();
-      nsRecognition.continuous = true;
-      nsRecognition.interimResults = true;
-      nsRecognition.lang = navigator.language || 'en-US';
-
-      nsPreText = input.value;
-      nsIsRecording = true;
-      nsMicBtn.classList.add('recording');
-
-      nsRecognition.onresult = (event) => {
-        let interim = '', final = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) final += t;
-          else interim += t;
-        }
-        if (final) nsPreText += (nsPreText ? ' ' : '') + final.trim();
-        input.value = nsPreText + (interim ? ' ' + interim : '');
-      };
-
-      nsRecognition.onerror = () => nsStopRecording();
-      nsRecognition.onend = () => {
-        if (nsIsRecording) try { nsRecognition.start(); } catch {}
-      };
-
-      try { nsRecognition.start(); } catch { nsStopRecording(); }
-    }
-
-    function nsStopRecording() {
-      nsIsRecording = false;
-      nsMicBtn.classList.remove('recording');
-      if (nsRecognition) { try { nsRecognition.stop(); } catch {} nsRecognition = null; }
-    }
-
-    nsMicBtn.addEventListener('click', () => {
-      if (nsIsRecording) nsStopRecording();
-      else nsStartRecording();
-    });
-  } else if (nsMicBtn) {
-    nsMicBtn.classList.add('unsupported');
+  let stopNsMic = null;
+  if (nsMicBtn) {
+    stopNsMic = createVoiceInput(input, nsMicBtn);
   }
 
   // Don't auto-focus — let the user tap the input to bring up keyboard
@@ -1945,13 +1949,13 @@ function updateCommentBadge() {
   }
   const count = queuedComments.length;
   badge.innerHTML = `<span>💬 ${count} comment${count > 1 ? 's' : ''} queued</span><button id="comment-send-btn">Send</button>`;
-  // Click badge text → open review modal
-  badge.addEventListener('click', openReviewModal);
+  // Click badge text → open review modal (use assignment to prevent listener accumulation)
+  badge.onclick = openReviewModal;
   // Click send button → send (stop propagation so it doesn't also open modal)
-  document.getElementById('comment-send-btn').addEventListener('click', (e) => {
+  document.getElementById('comment-send-btn').onclick = (e) => {
     e.stopPropagation();
     sendQueuedComments();
-  });
+  };
 }
 
 async function sendQueuedComments() {

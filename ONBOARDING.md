@@ -50,6 +50,7 @@
 | PWA manifest (home screen icon + app metadata) | `public/manifest.json` |
 | Multi-worktree hub (dev-only proxy) | `hub.js` |
 | Main server watchdog + auto-updater (cron scripts) | `scripts/watchdog.sh`, `scripts/updater.sh`, `scripts/hub-watchdog.sh`, `scripts/tunnel-watchdog.sh` |
+| Voice input (shared factory for main + new session mic) | `public/js/app.js` — search `createVoiceInput` |
 | README screenshots (product showcase) | `docs/` |
 
 ---
@@ -80,6 +81,7 @@
 - **Desktop width alignment uses AG's inline `max-width`.** The chat container has `style="max-width: max(30vw, 40rem)"` set by AG. The desktop `@media` block in `style.css` applies the same value to `.input-wrapper`, `.quick-actions`, `.running-tasks`, and `.scroll-fab`. If AG changes this value, update the media query to match.
 - **Running tasks live inside the input box container.** `#antigravity.agentSidePanelInputBox` has a `.rounded-t-2xl` child (sibling of `.bg-card`) that contains the task list. This element is completely absent from the DOM when no tasks are running — it's not hidden, it doesn't exist. The capture must null-check both the input box and the task section child.
 - **Settings dismiss uses backdrop click.** `dismiss-settings` in `server.js` clicks the settings modal's backdrop overlay (`.bg-black\/80`) instead of a Go Back button, ensuring settings close in one action regardless of which tab was visited.
+- **Mobile SpeechRecognition produces cumulative results.** Desktop browsers produce one result per utterance (incremental). Mobile Safari/Chrome produce one result per word, and each result's `transcript` contains the FULL text from session start (cumulative). The `createVoiceInput` factory in `app.js` handles this by using ONLY the last result's transcript — never concatenating all results. Creating a new `SpeechRecognition` instance on restart (instead of reusing) causes a system ding on mobile. Calling `recognition.stop()` is async — null out `onresult`/`onend` before stopping to prevent post-stop events from refilling a cleared input.
 
 ---
 
