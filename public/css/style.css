@@ -333,10 +333,12 @@ body {
   pointer-events: none;
 }
 
-/* Hide the default horizontal three-dots icon (shown when NOT hovered).
-   It overlaps with the hover action strip that we forced visible above.
-   AG uses a small "..." indicator that becomes redundant. */
-#left-sidebar-content .group .group-hover\:visible ~ *,
+/* Hide non-essential status content in conversation rows on mobile.
+   Timestamps (span), spinners (svg), and stray icons are not needed — the
+   action strip (forced visible above) already covers the area.
+   Only the unread indicator dot (a div child with bg-primary rounded-full) is kept. */
+#left-sidebar-content .group .group-hover\:invisible > span,
+#left-sidebar-content .group .group-hover\:invisible > svg,
 #left-sidebar-content .group > [role="button"] .shrink-0 > .relative > svg.lucide {
   display: none !important;
 }
