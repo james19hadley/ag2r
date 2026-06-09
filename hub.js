@@ -226,6 +226,7 @@ function proxyRequest(req, res, childPort, wtName) {
     headers: {
       ...req.headers,
       host: `127.0.0.1:${childPort}`,
+      'accept-encoding': 'identity', // disable compression so we can inject
     },
     rejectUnauthorized: false,
   }, (proxyRes) => {
@@ -237,8 +238,30 @@ function proxyRequest(req, res, childPort, wtName) {
       }
     }
 
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
-    proxyRes.pipe(res);
+    const contentType = proxyRes.headers['content-type'] || '';
+    const isHtml = contentType.includes('text/html');
+
+    if (isHtml && wtName) {
+      // Buffer HTML to inject hub banner
+      const chunks = [];
+      proxyRes.on('data', (chunk) => chunks.push(chunk));
+      proxyRes.on('end', () => {
+        let body = Buffer.concat(chunks).toString('utf-8');
+        // Skip injection for main branch (name is "ag2r" on port 3000)
+        const isMain = wtName === 'ag2r' && childPort === MAIN_PORT;
+        if (!isMain) {
+          const script = `<script>document.addEventListener('DOMContentLoaded',()=>{const t=document.querySelector('.header-title');if(t)t.innerHTML='AG2R <span style="font-size:0.5em;opacity:0.6;font-weight:400">:${childPort} ${wtName}</span>';})<\/script>`;
+          body = body.replace('</head>', script + '</head>');
+        }
+        delete proxyRes.headers['content-length'];
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        res.end(body);
+      });
+    } else {
+      // Non-HTML: pipe through unchanged
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    }
   });
 
   proxyReq.on('error', (err) => {
