@@ -35,6 +35,10 @@
 | Mobile UI structure | `public/index.html` |
 | Login page | `public/login.html` |
 | Mobile-first styles (minimal CDP overrides) | `public/css/style.css` |
+| Desktop width alignment (input bar, Continue, scroll FAB) | `public/css/style.css` — search `@media (min-width: 768px)` |
+| Settings modal rendering (click proxying, nav sidebar) | `server.js` — search `settings` and `dismiss-settings` |
+| Quick actions (Continue button) visibility | `public/js/app.js` — search `quickActions` |
+| Agent running state + action button toggle | `public/js/app.js` — search `agentRunning` and `updateActionButton` |
 | Environment config template (SSoT for config) | `.env.example` |
 | Project dependencies (SSoT for versions) | `package.json` |
 | Self-signed SSL certs (auto-generated, gitignored) | `certs/` |
@@ -63,6 +67,11 @@
 - **Sidebar elements hidden for mobile.** The top 3 actions (New Conversation, History, Scheduled Tasks), the add-project button, and back/forward nav are hidden via CSS attribute selectors in `style.css` (search "Hidden Sidebar Elements") + DOM removal in `app.js` `renderSidebar()`. Per-session action buttons (three-dots, pin, archive) are all visible. To re-enable hidden elements, remove/comment those CSS rules and JS cleanup code.
 - **Permission banner lives OUTSIDE the scroll container.** AG renders the permission/approval radiogroup in a `flex-shrink-0` section below the scrollable chat area. Both capture and click proxy must search `document`-wide, not inside `container`. The `input[checked]` HTML attribute is the initial default, not current state — use `bg-secondary` class to detect the selected option.
 - **Android selection coexistence.** Android's native text selection toolbar cannot be disabled independently of text selection itself. The comment FAB uses `selectionchange` (not `touchend`) to detect selections on mobile — `touchend` fires before Android finalizes the selection. The FAB dismiss handler is scoped to `pointerdown` on the right sidebar only (not global `mousedown`/`touchstart`) so Android's native toolbar interactions don't accidentally dismiss it.
+- **Quick actions (Continue) visibility — single source of truth.** `quickActions.classList.toggle('hidden', ...)` must ONLY be called from WS message handlers (snapshot/status), never from `updateActionButton()` or `loadSnapshot()`. `loadSnapshot` previously had a `classList.toggle('hidden', hideBottomBar)` that force-showed Continue on every render cycle (since `isNewSessionPage` was usually `false`), causing flickering. The fix: `loadSnapshot` can only `add('hidden')`, never remove it.
+- **`agentRunning` is set from WS handlers only.** `loadSnapshot`'s HTTP fetch can return a stale value that races with the WS push. All `agentRunning` assignments and `updateActionButton()` calls must originate from the WS `snapshot`/`status` handlers.
+- **`loadSnapshot` HTML dedup.** `loadSnapshot` stores `_lastHtml` and skips `innerHTML` re-renders when the HTML hasn't changed. Without this, every identical snapshot resets scroll position.
+- **Desktop width alignment uses AG's inline `max-width`.** The chat container has `style="max-width: max(30vw, 40rem)"` set by AG. The desktop `@media` block in `style.css` applies the same value to `.input-wrapper`, `.quick-actions`, and `.scroll-fab`. If AG changes this value, update the media query to match.
+- **Settings dismiss uses backdrop click.** `dismiss-settings` in `server.js` clicks the settings modal's backdrop overlay (`.bg-black\/80`) instead of a Go Back button, ensuring settings close in one action regardless of which tab was visited.
 
 ---
 
