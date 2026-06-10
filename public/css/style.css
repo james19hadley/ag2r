@@ -508,8 +508,9 @@ body {
 
 /* ── Running Tasks Strip ── */
 .running-tasks {
-  border-bottom: 1px solid var(--border-subtle);
   overflow: hidden;
+  background: transparent;
+  padding: 6px 12px;
 }
 
 .running-tasks.hidden {
@@ -631,11 +632,26 @@ body {
   z-index: 100;
 }
 
+/* When tasks are running, input-bar becomes the outer card (like AG's inputBox) */
+.input-bar:has(.running-tasks:not(.hidden)) {
+  background: #252525;
+  border-top: none;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  padding-bottom: max(1px, var(--safe-bottom));
+}
+
 /* Desktop: constrain input bar + Continue + scroll FAB to chat content width */
 @media (min-width: 768px) {
   .input-bar {
     background: transparent;
     border-top: none;
+  }
+  /* Outer card when tasks running */
+  .input-bar:has(.running-tasks:not(.hidden)) {
+    width: 100%;
+    max-width: max(30vw, 40rem);
+    margin: 0 auto;
   }
   .input-wrapper {
     width: 100%;
@@ -658,6 +674,7 @@ body {
   display: none;
 }
 
+
 .input-wrapper {
   display: flex;
   flex-direction: column;
@@ -665,6 +682,12 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 10px 12px 6px;
+}
+
+/* Inside the outer card, input-wrapper is the inner dark card (AG: 15px = 16px - 1px inset) */
+.input-bar:has(.running-tasks:not(.hidden)) .input-wrapper {
+  border: none;
+  border-radius: calc(var(--radius-lg) - 1px);
 }
 
 .input-wrapper:focus-within {
@@ -1194,6 +1217,23 @@ body {
   overflow: hidden;
 }
 
+/* When env bar present, form becomes the outer card */
+.ag2r-new-session-form.has-env-bar {
+  background: #252525;
+  border: none;
+  padding: 1px;
+  overflow: visible;
+}
+
+/* Inner card wrapping textarea + controls */
+.ag2r-new-session-inner {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-input);
+  border-radius: calc(16px - 1px);
+  overflow: hidden;
+}
+
 .ag2r-new-session-form textarea {
   width: 100%;
   min-height: 80px;
@@ -1273,8 +1313,7 @@ body {
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 6px 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 6px 12px;
 }
 
 .ag2r-env-chip {

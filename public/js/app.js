@@ -1468,33 +1468,35 @@ function renderNewSessionPage(container, data) {
           <span class="material-symbols-rounded" style="font-size:14px;opacity:0.6">expand_more</span>
         </button>` : ''}
       </div>
-      <form id="ag2r-new-session-form" class="ag2r-new-session-form">
-        <div id="ag2r-ns-image-preview" class="image-preview-strip hidden"></div>
-        <textarea
-          id="ag2r-new-session-input"
-          placeholder="Ask anything, @ to mention, / for actions"
-          rows="3"
-        ></textarea>
-        <div class="ag2r-new-session-controls">
-          <div class="ag2r-new-session-left">
-            <input type="file" id="ag2r-ns-photo-input" accept="image/*" multiple hidden>
-            <button type="button" id="ag2r-ns-attach" class="attach-btn" aria-label="Add context">
-              <span class="material-symbols-rounded">add</span>
-            </button>
-            <button type="button" class="ag2r-ns-model-chip model-chip" data-ag-click-id="model:0" data-ag-click-label="${modelName}">
-              <span class="model-chip-text">${modelName}</span>
-              <span class="material-symbols-rounded model-chip-chevron">expand_more</span>
-            </button>
-          </div>
-          <div class="ag2r-new-session-right">
-            <button type="button" id="ag2r-new-session-mic" class="mic-btn" aria-label="Voice input">
-              <span class="material-symbols-rounded mic-icon">mic</span>
-            </button>
-            <button type="submit" id="ag2r-new-session-send" aria-label="Send">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 -960 960 960" fill="currentColor">
-                <path d="M120-160v-640l760,320-760,320Zm60-93 544-227-544-230v168l242,62-242,60v167Zm0,0v-457,457Z"/>
-              </svg>
-            </button>
+      <form id="ag2r-new-session-form" class="ag2r-new-session-form ${envBarHtml ? 'has-env-bar' : ''}">
+        <div class="ag2r-new-session-inner">
+          <div id="ag2r-ns-image-preview" class="image-preview-strip hidden"></div>
+          <textarea
+            id="ag2r-new-session-input"
+            placeholder="Ask anything, @ to mention, / for actions"
+            rows="3"
+          ></textarea>
+          <div class="ag2r-new-session-controls">
+            <div class="ag2r-new-session-left">
+              <input type="file" id="ag2r-ns-photo-input" accept="image/*" multiple hidden>
+              <button type="button" id="ag2r-ns-attach" class="attach-btn" aria-label="Add context">
+                <span class="material-symbols-rounded">add</span>
+              </button>
+              <button type="button" class="ag2r-ns-model-chip model-chip" data-ag-click-id="model:0" data-ag-click-label="${modelName}">
+                <span class="model-chip-text">${modelName}</span>
+                <span class="material-symbols-rounded model-chip-chevron">expand_more</span>
+              </button>
+            </div>
+            <div class="ag2r-new-session-right">
+              <button type="button" id="ag2r-new-session-mic" class="mic-btn" aria-label="Voice input">
+                <span class="material-symbols-rounded mic-icon">mic</span>
+              </button>
+              <button type="submit" id="ag2r-new-session-send" aria-label="Send">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 -960 960 960" fill="currentColor">
+                  <path d="M120-160v-640l760,320-760,320Zm60-93 544-227-544-230v168l242,62-242,60v167Zm0,0v-457,457Z"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         ${envBarHtml}
