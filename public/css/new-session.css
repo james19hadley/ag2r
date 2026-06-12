@@ -1,0 +1,170 @@
+/* ── New Session Page ── */
+.ag2r-new-session {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 24px 16px;
+  gap: 20px;
+}
+
+.ag2r-new-session-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ag2r-new-session-project {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ag2r-new-session-project svg {
+  opacity: 0.7;
+}
+
+
+.ag2r-new-session-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, #ffffff 5%, #101010);
+  overflow: hidden;
+}
+
+/* When env bar present, form becomes the outer card */
+.ag2r-new-session-form.has-env-bar {
+  background: #252525;
+  border: none;
+  padding: 1px;
+  overflow: visible;
+}
+
+/* Inner card wrapping textarea + controls */
+.ag2r-new-session-inner {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-input);
+  border-radius: calc(16px - 1px);
+  overflow: hidden;
+}
+
+.ag2r-new-session-form textarea {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  padding: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+
+.ag2r-new-session-form textarea:focus {
+  outline: none;
+}
+
+.ag2r-new-session-form textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.ag2r-new-session-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+}
+
+.ag2r-new-session-left,
+.ag2r-new-session-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ag2r-new-session-left {
+  position: relative;
+}
+
+.ag2r-new-session-form button[type="submit"] {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.ag2r-new-session-form button[type="submit"]:active {
+  transform: scale(0.92);
+}
+
+.ag2r-new-session-form button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ag2r-new-session-form button[type="submit"].sending {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── New Session — Environment/Branch Settings Bar ── */
+.ag2r-new-session-env-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+}
+
+.ag2r-env-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.ag2r-env-chip:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ag2r-env-chip .material-symbols-rounded {
+  opacity: 0.8;
+}

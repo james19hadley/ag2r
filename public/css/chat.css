@@ -1,0 +1,112 @@
+/* ── Chat Area ── */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+.chat-content {
+  padding: 12px 16px 12px;
+}
+
+/* ── Empty State ── */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-muted);
+}
+
+.empty-state.hidden {
+  display: none;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.empty-subtitle {
+  font-size: 13px;
+}
+
+/* ── Scroll FAB ── */
+.scroll-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--input-bar-height) + 8px);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s, background 0.15s;
+}
+
+.scroll-fab.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.scroll-fab:active {
+  background: var(--bg-hover);
+}
+
+/* ── Quick Action Chips ── */
+.quick-actions {
+  position: fixed;
+  left: 12px;
+  bottom: calc(var(--input-bar-height) + 8px);
+  z-index: 50;
+  display: flex;
+  gap: 8px;
+}
+
+.quick-action-chip {
+  padding: 6px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: background 0.15s, color 0.15s, transform 0.1s, opacity 0.2s;
+}
+
+.quick-action-chip:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  transform: scale(0.95);
+}
+
+.quick-actions.hidden {
+  display: none;
+}

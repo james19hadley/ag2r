@@ -1,0 +1,213 @@
+/* ── Buttons, Icons and Badges ── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.icon-btn:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Connection Status Dot ── */
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s;
+}
+
+.connection-dot[data-status="connected"] {
+  background-color: var(--green);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.connection-dot[data-status="reconnecting"] {
+  background-color: var(--yellow);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.connection-dot[data-status="disconnected"] {
+  background-color: var(--red);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Interactive Elements in Captured Content ── */
+[data-ag-click-id] {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+[data-ag-click-id]:active {
+  opacity: 0.7;
+}
+
+[data-ag-click-id].ag-clicking {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ── Captured Content Overrides (hide dead AG chrome) ── */
+
+/* Hide AG's close/toggle buttons — we have our own in the header */
+[data-testid="sidebar-toggle"],
+[data-testid="close-aux-pane"] {
+  display: none !important;
+}
+
+/* ── Hidden Sidebar Elements (desktop-only, re-enable by removing this block) ──
+   These are captured from AG's sidebar but not useful on mobile. */
+
+/* Task 1: Hide top 2 action buttons (New Conversation, History) — Scheduled Tasks is visible */
+[data-ag-click-label="New Conversation"],
+[data-ag-click-label="Conversation History"] {
+  display: none !important;
+}
+
+/* Hide the Go Back / Go Forward nav buttons (desktop-only) */
+[aria-label="Go Back"],
+[aria-label="Go Forward"] {
+  display: none !important;
+}
+
+/* Task 2: Hide "Add new project" button (folder+ icon next to Projects heading) */
+#left-sidebar-content .flex.items-center.gap-1 > button[aria-haspopup="dialog"]:last-child {
+  display: none !important;
+}
+
+/* ── Force hover-only action buttons to always show on mobile ──
+   AG uses Tailwind hover patterns (hidden group-hover:flex, invisible group-hover:visible)
+   to reveal action buttons only on hover. Mobile has no hover, so force them visible. */
+
+/* Project-level action buttons (settings gear, + new chat) */
+#left-sidebar-content .group-hover\/section\:flex {
+  display: flex !important;
+}
+
+/* Per-session hover action strip — force visible on mobile (no hover available).
+   The strip contains 3 buttons: three-dot menu, pin, archive. All shown.
+   Opaque background + left-edge gradient lets the conversation title fade beneath. */
+#left-sidebar-content .group-hover\:visible {
+  visibility: visible !important;
+  position: relative;
+  background: hsl(var(--sidebar, 0 0% 8.5%));
+  gap: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 2px !important;
+}
+
+#left-sidebar-content .group-hover\:visible button {
+  padding: 2px !important;
+  min-width: 0 !important;
+}
+
+#left-sidebar-content .group-hover\:visible::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  background: linear-gradient(to right, transparent, hsl(var(--sidebar, 0 0% 8.5%)));
+  pointer-events: none;
+}
+
+/* Hide non-essential status content in conversation rows on mobile.
+   Timestamps (span), spinners (svg), and stray icons are not needed — the
+   action strip (forced visible above) already covers the area.
+   Only the unread indicator dot (a div child with bg-primary rounded-full) is kept. */
+#left-sidebar-content .group .group-hover\:invisible > span,
+#left-sidebar-content .group .group-hover\:invisible > svg,
+#left-sidebar-content .group > [role="button"] .shrink-0 > .relative > svg.lucide {
+  display: none !important;
+}
+
+/* Fix +NNN more lines buttons — the horizontal rule (collapsed-line indicator)
+   passes through the button text. Pull button above the line with z-index
+   and ensure opaque background so the line doesn't show through.
+   AG uses bg-muted which may not resolve in our captured CSS context. */
+.sidebar-fill button.bg-muted {
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-bg-muted, #161b22) !important;
+}
+
+/* ── Collapsed Section Fix (Worked for / Thought for) ── */
+/* AG uses mask-image gradients on thinking content for a fade effect.
+   This makes text invisible in our context. Remove masks and height caps
+   so expanded content is fully visible. */
+#chat-content [style*="mask-image"] {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+#chat-content [style*="max-height: 200px"] {
+  max-height: none !important;
+}
+
+/* Container query height (100cqh) resolves to 0 without query context */
+#chat-content [style*="100cqh"] {
+  min-height: auto !important;
+}
+
+/* ── Streaming Span Fix ── */
+/* During streaming, AG wraps each word in <span> inside animate-markdown
+   with display:inline-flex. This smushes words together and stacks inline
+   code vertically. Override to plain inline display. */
+.animate-markdown {
+  display: inline !important;
+  align-items: initial !important;
+  vertical-align: initial !important;
+  gap: 0 !important;
+}
+
+/* Force <p> parents back to block (they get broken by [object Object] class) */
+#chat-content p[node] {
+  display: block !important;
+}
+
+/* Ensure word-spans flow inline with natural spacing */
+.animate-markdown > span {
+  display: inline !important;
+}
+
+/* Mobile copy button for code blocks */
+.mobile-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.15s, background 0.15s;
+}
+
+.mobile-copy-btn:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.mobile-copy-btn.copied {
+  color: var(--green);
+}

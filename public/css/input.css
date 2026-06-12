@@ -1,0 +1,171 @@
+/* ── Input Bar ── */
+.input-bar {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  padding-bottom: max(8px, var(--safe-bottom));
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 100;
+}
+
+/* When tasks are running, input-bar becomes the outer card (like AG's inputBox) */
+.input-bar:has(.running-tasks:not(.hidden)) {
+  background: #252525;
+  border-top: none;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  padding-bottom: max(1px, var(--safe-bottom));
+}
+
+/* Desktop: constrain input bar + Continue + scroll FAB to chat content width */
+@media (min-width: 768px) {
+  .input-bar {
+    background: transparent;
+    border-top: none;
+  }
+  /* Outer card when tasks running */
+  .input-bar:has(.running-tasks:not(.hidden)) {
+    width: 100%;
+    max-width: max(30vw, 40rem);
+    margin: 0 auto;
+  }
+  .input-wrapper {
+    width: 100%;
+    max-width: max(30vw, 40rem);
+    margin: 0 auto;
+  }
+  .quick-actions {
+    left: 0;
+    right: 0;
+    max-width: max(30vw, 40rem);
+    margin: 0 auto;
+    padding-left: 12px;
+  }
+  .scroll-fab {
+    right: calc(50% - max(30vw, 40rem) / 2 + 16px);
+  }
+}
+
+.input-bar.hidden {
+  display: none;
+}
+
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px 6px;
+}
+
+/* Inside the outer card, input-wrapper is the inner dark card (AG: 15px = 16px - 1px inset) */
+.input-bar:has(.running-tasks:not(.hidden)) .input-wrapper {
+  border: none;
+  border-radius: calc(var(--radius-lg) - 1px);
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--border-subtle);
+  outline: none;
+}
+
+/* Preview strip takes full row width above textarea */
+.input-wrapper > .image-preview-strip {
+  margin-bottom: 4px;
+}
+
+.message-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  -webkit-appearance: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.4;
+  resize: none;
+  min-height: 24px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.message-input:focus,
+#message-input:focus {
+  outline: none !important;
+  outline-width: 0 !important;
+  box-shadow: none;
+}
+
+.message-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Image Preview Strip (staged uploads above input) ── */
+.image-preview-strip {
+  display: flex;
+  gap: 8px;
+  padding: 8px 4px 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.image-preview-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.image-preview-strip.hidden {
+  display: none;
+}
+
+.image-preview-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-preview-item .remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.image-preview-item .remove-btn:active {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.image-preview-item.uploading {
+  opacity: 0.5;
+}
+
+.image-preview-item.upload-error {
+  border-color: var(--red, #ef4444);
+}

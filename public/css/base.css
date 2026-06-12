@@ -1,0 +1,72 @@
+/* ═══════════════════════════════════════════════
+   AG2R — Mobile-First Styles
+   Matches Antigravity 2.0 dark theme
+   ═══════════════════════════════════════════════ */
+
+/* ── Design Tokens (from AG's resolved theme) ── */
+:root {
+  /* Core — matches AG's body background: rgb(16, 16, 16) */
+  --bg-app: #101010;
+  --bg-panel: #161616;      /* AG --sidebar / --muted */
+  --bg-surface: #1c1c1c;    /* AG --card / --sidebar-muted */
+  --bg-hover: #2d2d2d;      /* AG --secondary */
+  --bg-input: #1c1c1c;      /* AG --card */
+
+  /* Text — matches AG's text color scale */
+  --text-primary: #cccccc;   /* AG --foreground */
+  --text-secondary: #9d9d9d; /* AG --secondary-foreground */
+  --text-muted: #6e6e6e;     /* AG --muted-foreground */
+
+  /* Accent — AG's --primary */
+  --accent: #007acc;
+  --accent-hover: #1a8ad4;
+  --accent-dim: rgba(0, 122, 204, 0.15);
+
+  /* Borders — AG's --border / --card-border */
+  --border: #252525;          /* AG --card-border */
+  --border-subtle: rgba(255, 255, 255, 0.05); /* AG --border */
+
+  --red: #ef4444;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --blue: #60a5fa;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+
+  --header-height: 52px;
+  --input-bar-height: 60px;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-app) !important;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

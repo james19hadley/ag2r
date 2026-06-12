@@ -1,0 +1,224 @@
+/* ── Input Controls Row (below textarea) ── */
+.input-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.input-left-actions,
+.input-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.input-left-actions {
+  position: relative;
+}
+
+/* ── Attach Button (+) ── */
+.attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.attach-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.attach-btn:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.attach-btn.uploading {
+  color: var(--accent);
+  animation: mic-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.attach-btn.upload-success {
+  color: var(--green, #22c55e);
+}
+
+.attach-btn.upload-error {
+  color: var(--red, #ef4444);
+}
+
+.attach-btn.at-limit {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ── Attach Context Menu ── */
+.attach-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 4px;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  min-width: 140px;
+}
+
+.attach-menu.hidden {
+  display: none;
+}
+
+.attach-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.attach-menu-item:active {
+  background: var(--bg-hover);
+}
+
+.attach-menu-item .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+/* ── Model Chip ── */
+.model-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+}
+
+.model-chip:active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.model-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-chip-chevron {
+  font-size: 14px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* ── Mic Button (Voice Input) ── */
+.mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.mic-btn:active {
+  background: var(--bg-hover);
+}
+
+.mic-btn.recording {
+  color: #ef4444;
+  animation: mic-pulse 1.5s ease-in-out infinite;
+}
+
+.mic-btn.recording .mic-icon {
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+}
+
+@keyframes mic-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* Hide mic button when Web Speech API isn't supported */
+.mic-btn.unsupported {
+  display: none;
+}
+
+/* ── Action Button (Send / Stop) ── */
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.action-btn[data-action="send"] {
+  background: var(--accent);
+  color: white;
+}
+
+.action-btn[data-action="send"]:active {
+  transform: scale(0.92);
+  background: var(--accent-hover);
+}
+
+.action-btn[data-action="send"].disabled {
+  background: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.action-btn[data-action="stop"] {
+  background: var(--red);
+  color: white;
+}
+
+.action-btn[data-action="stop"]:active {
+  transform: scale(0.92);
+}
+
+.action-icon {
+  font-size: 18px;
+}

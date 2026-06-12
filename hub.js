@@ -1053,7 +1053,7 @@ function handleHubApi(req, res, pathname) {
     let antigravityDebug = false;
     try {
       const psOutput = execSync(
-        'ps aux | grep "[A]ntigravity.app/Contents/MacOS/Antigravity"',
+        'ps aux | grep -i "[a]ntigravity" | grep -v "type=" | grep -v "language_server"',
         { encoding: 'utf-8', timeout: 2000 }
       ).trim();
       if (psOutput) {
@@ -1109,8 +1109,10 @@ function handleRestartAntigravity(req, res) {
   // Step 1: Kill all Antigravity processes
   log('Antigravity', 'Step 1: Killing existing processes...');
   try {
-    // killall works with the app name on macOS
-    const killOutput = execSync('killall "Antigravity" 2>&1 || true', {
+    const killCmd = process.platform === 'darwin'
+      ? 'killall "Antigravity" 2>&1 || true'
+      : 'killall "antigravity" 2>&1 || true';
+    const killOutput = execSync(killCmd, {
       encoding: 'utf-8', timeout: 5000,
     }).trim();
     log('Antigravity', `Kill result: ${killOutput || '(no output, likely killed)'}`);
@@ -1122,12 +1124,30 @@ function handleRestartAntigravity(req, res) {
   setTimeout(() => {
     log('Antigravity', 'Step 2: Relaunching with --remote-debugging-port=9000...');
     try {
-      const child = spawn('open', ['-a', 'Antigravity', '--args', '--remote-debugging-port=9000'], {
-        detached: true,
-        stdio: 'ignore',
-      });
-      child.unref();
-      log('Antigravity', `Relaunch spawned (open PID: ${child.pid})`);
+      if (process.platform === 'darwin') {
+        const child = spawn('open', ['-a', 'Antigravity', '--args', '--remote-debugging-port=9000'], {
+          detached: true,
+          stdio: 'ignore',
+        });
+        child.unref();
+        log('Antigravity', `Relaunch spawned (open PID: ${child.pid})`);
+      } else {
+        // Linux relaunch
+        const launcherConfigPath = '/home/ging/Documents/stud/nexus/launcher_config.json';
+        let execPath = '/home/ging/Downloads/Antigravity(1)/Antigravity-x64/antigravity';
+        if (fs.existsSync(launcherConfigPath)) {
+          try {
+            const config = JSON.parse(fs.readFileSync(launcherConfigPath, 'utf8'));
+            if (config.current_version_path) execPath = config.current_version_path;
+          } catch {}
+        }
+        const child = spawn(execPath, ['--remote-debugging-port=9000'], {
+          detached: true,
+          stdio: 'ignore',
+        });
+        child.unref();
+        log('Antigravity', `Relaunch spawned (PID: ${child.pid})`);
+      }
     } catch (e) {
       log('Antigravity', `Relaunch failed: ${e.message}`);
     }

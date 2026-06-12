@@ -1,0 +1,146 @@
+/* ── App Shell ── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--header-height);
+  padding: 0 8px;
+  padding-top: var(--safe-top);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  z-index: 300;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.header-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* ── Left Sidebar (AG captured content) ── */
+.left-sidebar {
+  position: fixed;
+  top: calc(var(--header-height) + var(--safe-top));
+  left: 0;
+  width: 85vw;
+  max-width: 320px;
+  height: calc(100dvh - var(--header-height) - var(--safe-top));
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-subtle);
+  z-index: 200;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.left-sidebar.open {
+  transform: translateX(0);
+}
+
+/* ── Right Sidebar (AG captured review panel) ── */
+.right-sidebar {
+  position: fixed;
+  top: calc(var(--header-height) + var(--safe-top));
+  right: 0;
+  width: 100vw;
+  height: calc(100dvh - var(--header-height) - var(--safe-top));
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-sidebar.open {
+  transform: translateX(0);
+}
+
+/* ── Shared sidebar styles ── */
+.sidebar-fill {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Force visible content — AG's CSS vars may not resolve outside their app context */
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+/* Suppress iOS/Android "callout" menu on long-press of links/images
+   in the right sidebar. The primary selection toolbar is unaffected. */
+#right-sidebar-content {
+  -webkit-touch-callout: none;
+}
+
+/* Consistent selection highlight for the right sidebar (dark theme) */
+#right-sidebar-content ::selection {
+  background: rgba(99, 102, 241, 0.35);
+  color: inherit;
+}
+
+/* Ensure captured AG content inherits visible colors */
+.sidebar-fill > * {
+  color: inherit;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Power Button Statuses ── */
+.power-btn {
+  color: var(--text-muted);
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.power-btn.active {
+  color: var(--green, #22c55e);
+}
+
+.power-btn.inactive {
+  color: var(--red, #ef4444);
+}
+
+.power-btn.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}

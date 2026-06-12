@@ -29,6 +29,9 @@
       <img src="/ag2r-icon.png" alt="AG2R" class="header-icon" width="32" height="32">
       <h1 class="header-title">AG2R</h1>
       <div id="connection-status" class="connection-dot" data-status="disconnected" title="Disconnected"></div>
+      <button id="ag-power-btn" class="icon-btn power-btn" aria-label="Antigravity Power" title="Power Control">
+        <span class="material-symbols-rounded">power_settings_new</span>
+      </button>
       <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review">
         <span class="material-symbols-rounded">right_panel_open</span>
       </button>
@@ -124,6 +127,32 @@
       <div id="permission-backdrop" class="permission-backdrop"></div>
       <div id="permission-content" class="permission-content"></div>
     </div>
+    <!-- Auth overlay — shown when Antigravity needs Google sign-in -->
+    <div id="auth-overlay" class="auth-overlay hidden">
+      <div class="auth-card">
+        <img src="/ag2r-icon.png" alt="AG2R" class="auth-logo" width="64" height="64">
+        <h2 class="auth-title">Sign in to Antigravity</h2>
+        <p class="auth-subtitle">Authentication required to use the AI agent.</p>
+        <button id="auth-signin-btn" class="auth-signin-btn">
+          <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#4285F4" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#34A853" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#EA4335" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Sign in with Google
+        </button>
+        <p id="auth-status" class="auth-status"></p>
+        <div class="auth-fallback-section">
+          <p class="auth-fallback-title">Connecting from mobile/remote?</p>
+          <p class="auth-fallback-desc">If Google Sign-In fails with a 'localhost refused to connect' error, copy that failed localhost URL from your browser's address bar and paste it below:</p>
+          <div class="auth-fallback-row">
+            <input type="text" id="auth-callback-url-input" placeholder="http://localhost:.../auth/callback?code=..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <button id="auth-callback-submit-btn">Submit</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Settings full-screen overlay -->
     <div id="settings-overlay" class="settings-overlay hidden">
       <div class="settings-header">
@@ -199,6 +228,6 @@
 
   </div>
 
-  <script src="/js/app.js"></script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>
