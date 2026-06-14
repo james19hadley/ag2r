@@ -7,7 +7,7 @@ import { state } from './state.js';
 import { MAX_UPLOAD_SIZE, DEBUG_MODE } from './config.js';
 import { log, debugLog } from './utils.js';
 import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
-import { track, readEvents } from './telemetry.js';
+import { track } from './telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { DISCOVER_SCRIPT } from './cdp-scripts/discover.js';
@@ -268,20 +268,7 @@ export function registerMiscRoutes(app) {
     res.json({ ok: true });
   });
 
-  // --- Telemetry Dashboard ---
-  app.get('/telemetry/events', async (req, res) => {
-    try {
-      const events = await readEvents();
-      res.json(events);
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
 
-  app.get('/telemetry/dashboard', (req, res) => {
-    const projectRoot = path.resolve(__dirname, '..');
-    res.sendFile(path.join(projectRoot, '.telemetry', 'dashboard.html'));
-  });
 
   // --- Restart Antigravity (kill + relaunch the desktop app) ---
   app.post('/restart-antigravity', async (req, res) => {
