@@ -1,15 +1,23 @@
 export const DISCOVER_SCRIPT = `
 (async () => {
   const results = {
+    // Search for elements containing sidebar-related text
     textMatches: [],
+    // Search for aside elements
     asides: [],
+    // Search for panel/sidebar class/id patterns
     panels: [],
+    // Search for tab-like structures
     tabs: [],
+    // Search for elements near the right edge of the viewport
     rightEdgeElements: [],
+    // The chat container we already know about
     chatContainer: null,
+    // All top-level structural elements
     topLevel: [],
   };
 
+  // 1. Find elements with sidebar-related text
   const textTargets = ['Overview', 'Review', 'Review Changes', 'No changes to review'];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
@@ -27,6 +35,7 @@ export const DISCOVER_SCRIPT = `
             parentTag: el.parentElement?.tagName,
             parentId: el.parentElement?.id || null,
             parentClass: el.parentElement?.className?.toString?.()?.substring(0, 200) || null,
+            // Walk up 5 levels to find structural ancestor
             ancestors: (() => {
               const anc = [];
               let p = el;
@@ -48,6 +57,7 @@ export const DISCOVER_SCRIPT = `
     }
   }
 
+  // 2. Find aside elements
   document.querySelectorAll('aside').forEach(el => {
     results.asides.push({
       id: el.id || null,
@@ -59,6 +69,7 @@ export const DISCOVER_SCRIPT = `
     });
   });
 
+  // 3. Find panel/sidebar patterns
   const panelSelectors = [
     '[class*="sidebar" i]', '[class*="panel" i]', '[class*="drawer" i]',
     '[class*="aside" i]', '[class*="review" i]', '[class*="overview" i]',
@@ -87,6 +98,7 @@ export const DISCOVER_SCRIPT = `
     } catch {}
   }
 
+  // 4. Find tab structures
   document.querySelectorAll('[role="tab"], [role="tablist"], [role="tabpanel"]').forEach(el => {
     results.tabs.push({
       tag: el.tagName,
@@ -100,6 +112,7 @@ export const DISCOVER_SCRIPT = `
     });
   });
 
+  // 5. Find elements positioned on the right side of the viewport
   const vw = window.innerWidth;
   document.querySelectorAll('div, section, aside, nav').forEach(el => {
     const rect = el.getBoundingClientRect();
@@ -117,6 +130,7 @@ export const DISCOVER_SCRIPT = `
     }
   });
 
+  // 6. Chat container (for reference)
   const container =
     document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
     document.querySelector('[data-testid="conversation-view"]') ||
@@ -127,6 +141,7 @@ export const DISCOVER_SCRIPT = `
       id: container.id || null,
       className: container.className?.toString?.()?.substring(0, 200) || null,
       rect: container.getBoundingClientRect(),
+      // Sibling info — sidebar is likely a sibling
       siblings: Array.from(container.parentElement?.children || []).map(s => ({
         tag: s.tagName,
         id: s.id || null,
@@ -137,6 +152,7 @@ export const DISCOVER_SCRIPT = `
     };
   }
 
+  // 7. Top-level children of body
   Array.from(document.body.children).forEach(el => {
     results.topLevel.push({
       tag: el.tagName,

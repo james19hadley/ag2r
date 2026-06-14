@@ -3,6 +3,7 @@ import { fetchAPI } from './api.js';
 import { addClickProxyHandlers } from './proxy.js';
 import { openRightSidebar } from './sidebar.js';
 import { loadSnapshot } from './snapshot.js';
+import { showRestartConfirm } from './restart.js';
 import {
   dropdownContent,
   dropdownOverlay,
@@ -206,7 +207,11 @@ export function renderRunningTasks(data) {
               body: JSON.stringify({ clickId, label: clickLabel }),
             });
           } catch {}
-          if (isNameBtn) openRightSidebar();
+          if (isNameBtn) {
+            const nameSpan = btn.querySelector('span');
+            state.isInSubagentView = true;
+            state.subagentViewTaskName = nameSpan ? nameSpan.textContent.trim() : 'Subagent';
+          }
           setTimeout(() => {
             btn.style.opacity = '';
             btn.style.pointerEvents = '';
@@ -232,6 +237,36 @@ export function renderSettingsScheduledTasks(data) {
     if (settingsContent._lastHtml !== data.settingsHtml) {
       settingsContent._lastHtml = data.settingsHtml;
       settingsContent.innerHTML = data.settingsHtml;
+
+      // Inject the native restart button after Settings
+      const settingsEl = settingsContent.querySelector('[data-ag-click-label="Settings"]');
+      if (settingsEl && !settingsContent.querySelector('#ag2r-restart-trigger')) {
+        const restartHtml = `
+          <button class="ag2r-restart-btn" id="ag2r-restart-trigger">
+            <span class="material-symbols-rounded">restart_alt</span>
+            Restart Antigravity
+          </button>
+        `;
+        settingsEl.insertAdjacentHTML('afterend', restartHtml);
+      } else if (!settingsEl && !settingsContent.querySelector('#ag2r-restart-trigger')) {
+        // Fallback for settings dialog
+        const restartHtml = `
+          <button class="ag2r-restart-btn" id="ag2r-restart-trigger" style="margin-top: 20px;">
+            <span class="material-symbols-rounded">restart_alt</span>
+            Restart Antigravity
+          </button>
+        `;
+        settingsContent.insertAdjacentHTML('beforeend', restartHtml);
+      }
+      const restartTrigger = settingsContent.querySelector('#ag2r-restart-trigger');
+      if (restartTrigger) {
+        restartTrigger.addEventListener('click', () => {
+          // Close settings modal first so it doesn't overlap
+          settingsOverlay.classList.add('hidden');
+          showRestartConfirm();
+        });
+      }
+
       addClickProxyHandlers(settingsContent);
     }
     settingsOverlay.classList.remove('hidden');

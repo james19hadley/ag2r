@@ -4,7 +4,5 @@ certs/
 *.log
 .DS_Store
 .ag2r-telemetry-id
-.telemetry/
-!.telemetry/dashboard.html
-!.telemetry/admin.js
 _tools/
+vapid-keys.json

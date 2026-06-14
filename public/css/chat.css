@@ -110,3 +110,9 @@
 .quick-actions.hidden {
   display: none;
 }
+
+/* ── Undo Buttons (force visible on mobile — AG hides via opacity-0 hover-only) ── */
+#chat-content .opacity-0:has([aria-label*="Undo"]) {
+  opacity: 1 !important;
+}
+

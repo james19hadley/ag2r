@@ -12,4 +12,6 @@ export const TUNNEL_ENABLED = process.env.TUNNEL_ENABLED === 'true';
 export const TUNNEL_URL = process.env.TUNNEL_URL || '';
 export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
 export const HTTP_ONLY = process.env.HTTP_ONLY === 'true';
+export const DEBUG_MODE = process.env.AG2R_DEBUG === '1';
+
 

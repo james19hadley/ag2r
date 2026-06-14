@@ -8,6 +8,8 @@ import { initComment } from './modules/comment.js';
 import { initAuth } from './modules/auth.js';
 import { initMisc } from './modules/misc.js';
 import { initPowerControl } from './modules/power.js';
+import { initRestartHandlers } from './modules/restart.js';
+import { initPushNotifications } from './modules/push.js';
 import { state } from './modules/state.js';
 import { fetchAPI, track } from './modules/api.js';
 import {
@@ -25,8 +27,11 @@ import {
   textInputBackdrop,
   textInputSubmit,
   textInputField,
+  textInputArea,
   textInputModal,
-  textInputArea
+  subagentBackBtn,
+  subagentBar,
+  chatArea
 } from './modules/dom.js';
 
 // Global error tracking
@@ -64,15 +69,32 @@ scheduledTasksBack?.addEventListener('click', async () => {
     const resp = await fetchAPI('/dismiss-scheduled-tasks', { method: 'POST' });
     const data = await resp.json();
     if (data.method === 'detail-back') {
-      // Went from detail view back to list — keep overlay open, clear cached HTML to force re-render
       scheduledTasksContent._lastHtml = '';
       return;
     }
   } catch (e) {
-    // Fall through to dismiss
+    // Fall through
   }
   scheduledTasksOverlay.classList.add('hidden');
   scheduledTasksContent._lastHtml = '';
+});
+
+// Subagent back button
+subagentBackBtn?.addEventListener('click', async () => {
+  if (subagentBackBtn) {
+    subagentBackBtn.style.opacity = '0.5';
+    subagentBackBtn.style.pointerEvents = 'none';
+  }
+  try {
+    await fetchAPI('/dismiss-scheduled-tasks', { method: 'POST' });
+  } catch {}
+  state.isInSubagentView = false;
+  state.subagentViewTaskName = '';
+  if (subagentBackBtn) {
+    subagentBackBtn.style.opacity = '';
+    subagentBackBtn.style.pointerEvents = '';
+  }
+  loadSnapshot();
 });
 
 // Text input modal submit
@@ -130,4 +152,6 @@ initComment();
 initAuth();
 initMisc();
 initPowerControl();
+initRestartHandlers();
+initPushNotifications();
 updateActionButton();

@@ -211,3 +211,41 @@
 .mobile-copy-btn.copied {
   color: var(--green);
 }
+
+/* ── Sidebar Restart Button ── */
+.ag2r-restart-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--red);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ag2r-restart-btn:active {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.ag2r-restart-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+/* ── Refresh Button Spin ── */
+#refresh-btn .material-symbols-rounded {
+  transition: transform 0.3s ease;
+}
+
+#refresh-btn:active .material-symbols-rounded {
+  transform: rotate(180deg);
+}
+

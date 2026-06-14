@@ -32,6 +32,9 @@
       <button id="ag-power-btn" class="icon-btn power-btn" aria-label="Antigravity Power" title="Power Control">
         <span class="material-symbols-rounded">power_settings_new</span>
       </button>
+      <button id="refresh-btn" class="icon-btn" aria-label="Refresh" title="Refresh">
+        <span class="material-symbols-rounded">refresh</span>
+      </button>
       <button id="review-toggle" class="icon-btn" aria-label="Toggle review panel" title="Review">
         <span class="material-symbols-rounded">right_panel_open</span>
       </button>
@@ -50,6 +53,15 @@
       <div id="right-sidebar-content" class="sidebar-fill"></div>
     </aside>
     <div id="right-sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- Subagent back bar (shown when viewing a subagent conversation) -->
+    <div id="subagent-bar" class="subagent-bar hidden">
+      <button id="subagent-back-btn" class="subagent-back-btn" aria-label="Back to parent conversation">
+        <span class="material-symbols-rounded">arrow_back</span>
+        <span id="subagent-parent-name" class="subagent-parent-name"></span>
+      </button>
+      <span class="subagent-label">Subagent</span>
+    </div>
 
     <!-- Chat Area -->
     <main id="chat-area" class="chat-area">
@@ -70,6 +82,7 @@
     <!-- Quick-action shortcuts -->
     <div id="quick-actions" class="quick-actions">
       <button class="quick-action-chip" data-message="Continue">Continue</button>
+      <button class="quick-action-chip" data-message="Proceed">Proceed</button>
     </div>
 
     <!-- Input Bar -->
@@ -88,7 +101,7 @@
           id="message-input"
           class="message-input"
           placeholder="Ask anything, @ to mention, / for actions"
-          rows="1"
+          rows="3"
           autocomplete="off"
           autocorrect="on"
           autocapitalize="sentences"
@@ -205,6 +218,20 @@
         <div class="comment-modal-actions">
           <button id="comment-cancel" class="comment-action-btn cancel">Cancel</button>
           <button id="comment-submit" class="comment-action-btn submit">Add Comment</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Restart Antigravity confirmation modal -->
+    <div id="restart-confirm" class="restart-confirm hidden">
+      <div class="restart-confirm-backdrop"></div>
+      <div class="restart-confirm-card">
+        <span class="material-symbols-rounded" style="font-size:32px;color:var(--red)">restart_alt</span>
+        <div class="restart-confirm-title">Restart Antigravity?</div>
+        <div class="restart-confirm-message">This will restart the Antigravity desktop app. All running agent sessions will be interrupted.</div>
+        <div class="restart-confirm-actions">
+          <button id="restart-cancel" class="restart-confirm-btn cancel">Cancel</button>
+          <button id="restart-go" class="restart-confirm-btn destructive">Restart</button>
         </div>
       </div>
     </div>

@@ -20,12 +20,12 @@ import { state } from './src/state.js';
 import { log, ensureCerts, authToken } from './src/utils.js';
 import { connectCDP, scheduleReconnect } from './src/cdp.js';
 import { startPolling, stopPolling } from './src/snapshot.js';
-import { broadcast, broadcastStatus } from './src/broadcast.js';
 import { authMiddleware, registerAuthRoutes } from './src/auth.js';
 import { registerApiRoutes } from './src/routes-api.js';
 import { registerClickRoute } from './src/route-click.js';
 import { registerSendRoute } from './src/route-send.js';
 import { registerMiscRoutes } from './src/routes-misc.js';
+import { registerPushRoutes } from './src/routes-push.js';
 import { track, startSession, endSession } from './src/telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +75,7 @@ registerApiRoutes(app);
 registerClickRoute(app);
 registerSendRoute(app);
 registerMiscRoutes(app);
+registerPushRoutes(app);
 
 async function start() {
   let server;

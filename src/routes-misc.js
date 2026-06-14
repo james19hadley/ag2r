@@ -1,15 +1,16 @@
 import multer from 'multer';
-import { exec } from 'child_process';
+import { exec, execSync, spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { state } from './state.js';
-import { MAX_UPLOAD_SIZE } from './config.js';
-import { log } from './utils.js';
+import { MAX_UPLOAD_SIZE, DEBUG_MODE } from './config.js';
+import { log, debugLog } from './utils.js';
 import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
 import { track, readEvents } from './telemetry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { DISCOVER_SCRIPT } from './discover-script.js';
+import { DISCOVER_SCRIPT } from './cdp-scripts/discover.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -280,6 +281,83 @@ export function registerMiscRoutes(app) {
   app.get('/telemetry/dashboard', (req, res) => {
     const projectRoot = path.resolve(__dirname, '..');
     res.sendFile(path.join(projectRoot, '.telemetry', 'dashboard.html'));
+  });
+
+  // --- Restart Antigravity (kill + relaunch the desktop app) ---
+  app.post('/restart-antigravity', async (req, res) => {
+    try {
+      // Find the Antigravity process PID
+      let pid = null;
+      try {
+        const psOutput = execSync('ps aux', { encoding: 'utf8' });
+        for (const line of psOutput.split('\n')) {
+          if ((line.includes('Antigravity.app/Contents/MacOS/Antigravity') || line.includes('/antigravity')) && !line.includes('grep') && !line.includes('ag2r')) {
+            pid = parseInt(line.trim().split(/\s+/)[1], 10);
+            break;
+          }
+        }
+      } catch (e) {
+        log('Restart', 'Failed to find Antigravity process:', e.message);
+        return res.json({ ok: false, reason: 'process_not_found' });
+      }
+
+      if (!pid) {
+        log('Restart', 'Antigravity process not found');
+        return res.json({ ok: false, reason: 'process_not_found' });
+      }
+
+      log('Restart', `Killing Antigravity (PID ${pid})...`);
+      track('restart_antigravity');
+
+      // Graceful kill
+      try { process.kill(pid, 'SIGTERM'); } catch (e) {
+        log('Restart', 'Kill failed:', e.message);
+        return res.json({ ok: false, reason: 'kill_failed' });
+      }
+
+      // Wait for process to die, then relaunch
+      setTimeout(() => {
+        log('Restart', 'Relaunching Antigravity...');
+        if (process.platform === 'darwin') {
+          exec('open -a Antigravity --args --remote-debugging-port=9000', (err) => {
+            if (err) log('Restart', 'Relaunch error:', err.message);
+            else log('Restart', 'Relaunch command sent');
+          });
+        } else {
+          // Linux relaunch
+          const launcherConfigPath = '/home/ging/Documents/stud/nexus/launcher_config.json';
+          let execPath = '/home/ging/Downloads/Antigravity(1)/Antigravity-x64/antigravity';
+          if (fs.existsSync(launcherConfigPath)) {
+            try {
+              const config = JSON.parse(fs.readFileSync(launcherConfigPath, 'utf8'));
+              if (config.current_version_path) execPath = config.current_version_path;
+            } catch {}
+          }
+          const child = spawn(execPath, ['--remote-debugging-port=9000'], {
+            detached: true,
+            stdio: 'ignore',
+          });
+          child.unref();
+          log('Restart', `Relaunch spawned (PID: ${child.pid})`);
+        }
+      }, 1500);
+
+      res.json({ ok: true });
+    } catch (e) {
+      log('Restart', 'Unexpected error:', e.message);
+      res.status(500).json({ ok: false, reason: e.message });
+    }
+  });
+
+  // --- Debug Log Endpoint (AG2R_DEBUG=1 only) ---
+  app.post('/debug-log', (req, res) => {
+    if (!DEBUG_MODE) return res.status(404).json({ error: 'Not found' });
+    const { event, detail } = req.body || {};
+    if (!event || typeof event !== 'string') {
+      return res.status(400).json({ error: 'event is required' });
+    }
+    debugLog('CLIENT', event, typeof detail === 'string' ? detail : JSON.stringify(detail));
+    res.json({ ok: true });
   });
 
   app.use((err, req, res, next) => {

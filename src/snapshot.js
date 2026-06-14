@@ -1,14 +1,13 @@
 import { state } from './state.js';
 import { POLL_INTERVAL } from './config.js';
 import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
-import { CAPTURE_SCRIPT } from './browser-capture.js';
-import {
-  RUNNING_TASKS_SCRIPT,
-  SCHEDULED_TASKS_SCRIPT,
-  SCHEDULED_TASKS_DIALOG_SCRIPT
-} from './capture-scripts.js';
+import { CAPTURE_SCRIPT } from './cdp-scripts/capture.js';
+import { RUNNING_TASKS_SCRIPT } from './cdp-scripts/running-tasks.js';
+import { SCHEDULED_TASKS_SCRIPT } from './cdp-scripts/scheduled-tasks.js';
+import { SCHEDULED_TASKS_DIALOG_SCRIPT } from './cdp-scripts/scheduled-tasks-dialog.js';
 import { hashString } from './utils.js';
 import { broadcast } from './broadcast.js';
+import { checkAttentionState } from './routes-push.js';
 
 export async function captureSnapshot() {
   try {
@@ -119,6 +118,8 @@ export function startPolling() {
             agentRunning: snapshot.agentRunning,
           });
         }
+
+        checkAttentionState(snapshot);
 
         errorLogThrottle = 0;
       }

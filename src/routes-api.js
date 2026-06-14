@@ -2,8 +2,16 @@ import express from 'express';
 import { state } from './state.js';
 import { log } from './utils.js';
 import { evaluateInBrowser } from './cdp.js';
-import { RIGHT_SIDEBAR_SCRIPT, STOP_SCRIPT } from './capture-scripts.js';
 import { track } from './telemetry.js';
+
+// CDP scripts from src/cdp-scripts/
+import { RIGHT_SIDEBAR_SCRIPT } from './cdp-scripts/right-sidebar.js';
+import { STOP_SCRIPT } from './cdp-scripts/stop.js';
+import { OPEN_RIGHT_SIDEBAR_SCRIPT } from './cdp-scripts/open-right-sidebar.js';
+import { SELECT_OVERVIEW_TAB_SCRIPT } from './cdp-scripts/select-overview-tab.js';
+import { buildProxyImageScript } from './cdp-scripts/proxy-image.js';
+import { EXPAND_LEFT_SIDEBAR_SCRIPT } from './cdp-scripts/expand-left-sidebar.js';
+import { buildCopyResponseScript } from './cdp-scripts/copy-response.js';
 
 export function registerApiRoutes(app) {
   app.get('/snapshot', (req, res) => {
@@ -20,6 +28,8 @@ export function registerApiRoutes(app) {
       leftSidebarHtml: state.cachedSnapshot.leftSidebarHtml || null,
       sidebarSignature: state.cachedSnapshot.sidebarSignature || null,
       isNewSessionPage: state.cachedSnapshot.isNewSessionPage || false,
+      isSubagentView: state.cachedSnapshot.isSubagentView || false,
+      parentConversationName: state.cachedSnapshot.parentConversationName || null,
       dropdownHtml: state.cachedSnapshot.dropdownHtml || null,
       dialogHtml: state.cachedSnapshot.dialogHtml || null,
       settingsHtml: state.cachedSnapshot.settingsHtml || null,
@@ -53,10 +63,53 @@ export function registerApiRoutes(app) {
     }
   });
 
+  // Upstream-aligned robust right-sidebar toggle and capture
   app.get('/right-sidebar', async (req, res) => {
     try {
-      const html = await evaluateInBrowser(RIGHT_SIDEBAR_SCRIPT);
-      res.json({ html: html || null });
+      let html = await evaluateInBrowser(RIGHT_SIDEBAR_SCRIPT);
+      if (html) {
+        return res.json({ html });
+      }
+
+      // Sidebar is closed in AG — try to open it
+      log('RightSidebar', 'Sidebar closed in AG, attempting to open...');
+      const opened = await evaluateInBrowser(OPEN_RIGHT_SIDEBAR_SCRIPT);
+
+      if (!opened) {
+        // Strategy 2: Keyboard shortcut — Cmd+Option+B
+        try {
+          await state.cdpClient.Input.dispatchKeyEvent({
+            type: 'keyDown',
+            key: 'b',
+            code: 'KeyB',
+            modifiers: 8 + 1, // Meta(8) + Alt(1) = Cmd+Option
+            windowsVirtualKeyCode: 66,
+          });
+          await state.cdpClient.Input.dispatchKeyEvent({
+            type: 'keyUp',
+            key: 'b',
+            code: 'KeyB',
+            modifiers: 8 + 1,
+            windowsVirtualKeyCode: 66,
+          });
+          log('RightSidebar', 'Sent Cmd+Option+B keyboard shortcut');
+        } catch (e) {
+          log('RightSidebar', 'Keyboard shortcut failed:', e.message);
+        }
+      } else {
+        log('RightSidebar', 'Clicked toggle button');
+      }
+
+      // Wait for sidebar to render
+      await new Promise(r => setTimeout(r, 500));
+
+      // Select the Overview tab if no tab is active
+      await evaluateInBrowser(SELECT_OVERVIEW_TAB_SCRIPT);
+      await new Promise(r => setTimeout(r, 200));
+
+      // Re-try capture
+      html = await evaluateInBrowser(RIGHT_SIDEBAR_SCRIPT);
+      res.json({ html: html || null, wasOpened: true });
     } catch (e) {
       console.debug('[RightSidebar] Error:', e.message);
       res.json({ html: null, error: e.message });
@@ -68,36 +121,7 @@ export function registerApiRoutes(app) {
     if (!src) return res.status(400).json({ error: 'Missing src parameter' });
 
     try {
-      const script = `
-      (() => {
-        const targetSrc = ${JSON.stringify(src)};
-        const imgs = document.querySelectorAll('img');
-        for (const img of imgs) {
-          if (img.src !== targetSrc && img.getAttribute('src') !== targetSrc) continue;
-          if (!img.complete || img.naturalWidth === 0) continue;
-
-          try {
-            const MAX_WIDTH = 800;
-            let w = img.naturalWidth;
-            let h = img.naturalHeight;
-            if (w > MAX_WIDTH) {
-              h = Math.round(h * (MAX_WIDTH / w));
-              w = MAX_WIDTH;
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            return canvas.toDataURL('image/png');
-          } catch (e) {
-            return null;
-          }
-        }
-        return null;
-      })()
-      `;
-
+      const script = buildProxyImageScript(JSON.stringify(src));
       const dataUrl = await evaluateInBrowser(script);
       res.json({ dataUrl: dataUrl || null });
     } catch (e) {
@@ -111,17 +135,7 @@ export function registerApiRoutes(app) {
       return res.status(503).json({ error: 'CDP not connected' });
     }
     try {
-      const result = await evaluateInBrowser(`
-        (async () => {
-          const leftRoot = document.querySelector('[class*="bg-sidebar"]');
-          const isCollapsed = !leftRoot || leftRoot.offsetParent === null;
-          if (!isCollapsed) return { ok: true, wasCollapsed: false };
-          const toggleBtn = document.querySelector('[data-testid="sidebar-toggle"]');
-          if (!toggleBtn) return { ok: false, error: 'Toggle button not found' };
-          toggleBtn.click();
-          return { ok: true, wasCollapsed: true };
-        })()
-      `);
+      const result = await evaluateInBrowser(EXPAND_LEFT_SIDEBAR_SCRIPT);
       log('ExpandLeftSidebar', JSON.stringify(result));
       res.json(result || { ok: false });
     } catch (e) {
@@ -136,56 +150,7 @@ export function registerApiRoutes(app) {
       return res.status(400).json({ error: 'Missing clickId or CDP not connected' });
     }
     try {
-      const script = `
-      (async () => {
-        const clickId = ${JSON.stringify(String(clickId))};
-        const colonIdx = clickId.indexOf(':');
-        if (colonIdx === -1) return { ok: false, reason: 'invalid_click_id' };
-        const source = clickId.substring(0, colonIdx);
-        const idx = parseInt(clickId.substring(colonIdx + 1), 10);
-
-        let root = null;
-        if (source === 'chat') {
-          root =
-            document.querySelector('.scrollbar-hide[class*="overflow-y-auto"]') ||
-            document.querySelector('[data-testid="conversation-view"]') ||
-            document.getElementById('conversation') ||
-            document.getElementById('chat') ||
-            document.getElementById('cascade');
-        }
-        if (!root) return { ok: false, reason: 'no_root' };
-
-        const maxLen = (source === 'chat') ? 80 : 0;
-        const visible = [];
-        root.querySelectorAll('button, a, [role="button"]').forEach(el => {
-          if (el.offsetParent !== null) visible.push(el);
-        });
-        root.querySelectorAll('[class*="cursor-pointer"]').forEach(el => {
-          if (el.offsetParent !== null && !visible.includes(el)) {
-            const hasHandler = typeof el.onclick === 'function';
-            if (maxLen && (el.textContent || '').trim().length > maxLen && !hasHandler) return;
-            visible.push(el);
-          }
-        });
-
-        const target = visible[idx];
-        if (!target) return { ok: false, reason: 'element_not_found', idx, total: visible.length };
-
-        let captured = null;
-        const orig = navigator.clipboard.writeText.bind(navigator.clipboard);
-        navigator.clipboard.writeText = (text) => {
-          captured = text;
-          return orig(text);
-        };
-        try {
-          target.click();
-          await new Promise(r => setTimeout(r, 300));
-        } finally {
-          navigator.clipboard.writeText = orig;
-        }
-        return { ok: true, text: captured || '' };
-      })()
-      `;
+      const script = buildCopyResponseScript(JSON.stringify(String(clickId)));
       const result = await evaluateInBrowser(script);
       log('CopyResponse', `clickId=${clickId} text=${(result?.text || '').length} chars`);
       if (result && result.ok) {

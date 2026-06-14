@@ -20,5 +20,8 @@ export const state = {
   stopMainMic: null,
   imageProxyCache: new Map(),
   pendingTextInputPlaceholder: null,
-  pendingTextInputClickId: null
+  pendingTextInputClickId: null,
+  isInSubagentView: false,
+  subagentViewTaskName: ''
 };
+

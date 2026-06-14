@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import selfsigned from 'selfsigned';
-import { APP_PASSWORD } from './config.js';
+import { APP_PASSWORD, DEBUG_MODE } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -56,3 +56,10 @@ export function ensureCerts() {
 
   return { key: pems.private, cert: pems.cert };
 }
+
+export function debugLog(source, event, detail = '') {
+  if (!DEBUG_MODE) return;
+  const ts = new Date().toISOString();
+  console.log(`[${ts} ${source}] ${event}${detail ? ' ' + detail : ''}`);
+}
+

@@ -2,15 +2,18 @@
 
 A lightweight mobile remote interface for monitoring and interacting with [Antigravity](https://antigravity.dev) AI coding sessions from your phone — on Wi-Fi, hotspot, or anywhere in the world.
 
-<p align="center">
-  <img src="docs/hero-mobile.png" alt="AG2R Chat" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/review-diff.png" alt="AG2R Code Review" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/comment-queued.png" alt="AG2R Comments" width="180" />
-  &nbsp;&nbsp;
-  <img src="docs/overview-panel.png" alt="AG2R Overview" width="180" />
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/hero-mobile.png" alt="AG2R Chat" width="180" /><br><sub>Live Chat</sub></td>
+    <td align="center"><img src="docs/review-diff.png" alt="AG2R Code Review" width="180" /><br><sub>Code Review</sub></td>
+    <td align="center"><img src="docs/comment-queued.png" alt="AG2R Comments" width="180" /><br><sub>Commenting</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/overview-panel.png" alt="AG2R Overview" width="180" /><br><sub>Overview</sub></td>
+    <td align="center"><img src="docs/notification-push.jpg" alt="AG2R Push Notifications" width="180" /><br><sub>Notifications</sub></td>
+    <td align="center"><img src="docs/subagent-view.jpg" alt="AG2R Subagent View" width="180" /><br><sub>Subagents</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -19,108 +22,90 @@ A lightweight mobile remote interface for monitoring and interacting with [Antig
 ### Prerequisites
 
 - Node.js 18+
-- Antigravity running with CDP enabled:
-  ```bash
-  antigravity . --remote-debugging-port=9000
-  ```
+- Antigravity launched with CDP enabled: `open -a Antigravity --args --remote-debugging-port=9000`
 
 ### Setup
 
 ```bash
-# Clone the repo
 git clone git@github.com:the-future-company/ag2r.git
 cd ag2r
-
-# Install dependencies
 npm install
-
-# Copy environment config and customize
 cp .env.example .env
-
-# Start the server
 node server.js
 ```
 
-On first run, AG2R generates a self-signed SSL certificate in `certs/`.
+That's it — AG2R is running on `https://localhost:3000`. On first run, a self-signed SSL cert is generated in `certs/`.
 
-> [!IMPORTANT]
-> **Never commit your `.env` file.** It contains your password and session secret. The `.env.example` file shows the config template — copy it and customize.
+By default **auth is off** — no login needed. This is fine for local use. If you're exposing AG2R to the internet (see below), you **must** set a password first.
 
 ---
 
-## 🌐 Three Ways to Connect
+## 🌐 How to Connect
 
-### 1. Local Network (Same Wi-Fi)
+### Option 1: Local Network (Same Wi-Fi)
 
-The simplest setup — works when your phone and computer are on the same Wi-Fi network.
+No extra setup — just start the server and open it on your phone.
 
-1. Start the server: `node server.js`
+1. `node server.js`
 2. Open `https://<your-computer-ip>:3000` on your phone
 3. Accept the self-signed certificate warning
-4. Enter the passcode (default: `antigravity`, configurable in `.env`)
 
-> [!NOTE]
-> This does **not** work over mobile hotspot or when you're away from home. Your phone must be on the same network as the computer running AG2R.
+No password needed for local-only use. Your phone must be on the same Wi-Fi as the computer.
 
 ---
 
-### 2. Quick Tunnel (Any Network, Temporary URL)
+### Option 2: Remote Access (Any Network)
 
-Use [Cloudflare's free quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) for instant access from anywhere — no account or domain required. The URL changes each time you restart.
+Use a [Cloudflare tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) to access AG2R from anywhere — no port forwarding needed.
+
+> [!WARNING]
+> **Set a strong password before exposing AG2R to the internet.** Edit `.env`:
+>
+> ```bash
+> AUTH_ENABLED=true
+> APP_PASSWORD=your-strong-password-here
+> SESSION_SECRET=$(openssl rand -hex 24)
+> ```
+
+**Step 1 — Start the tunnel** (gets you a public URL):
 
 ```bash
-# Install cloudflared (macOS)
 brew install cloudflared
-
-# Start AG2R
-node server.js
-
-# In a second terminal, start the tunnel
 cloudflared tunnel --url https://localhost:3000 --no-tls-verify
 ```
 
-Cloudflared prints a random URL like `https://random-words.trycloudflare.com`. Open that on your phone.
+Cloudflared prints a URL like `https://random-words.trycloudflare.com`.
 
-> [!WARNING]
-> **Set a strong password in `.env` before using any tunnel.** The default password `antigravity` is not secure for internet-facing access.
->
-> ```bash
-> # In .env
-> APP_PASSWORD=your-strong-password-here
-> SESSION_SECRET=run-openssl-rand-hex-24-to-generate
-> ```
-
----
-
-### 3. Dedicated Tunnel (Any Network, Stable URL)
-
-Set up a permanent Cloudflare tunnel with your own domain for a stable URL that never changes.
-
-**Prerequisites:**
-- A [Cloudflare account](https://dash.cloudflare.com) (free)
-- A domain with DNS managed by Cloudflare
-
-**One-time setup:**
+**Step 2 — Add the URL to `.env`** so push notifications work:
 
 ```bash
-# Install cloudflared
-brew install cloudflared
+TUNNEL_ENABLED=true
+TUNNEL_URL=https://random-words.trycloudflare.com   # ← paste your URL here
+```
 
-# Login to Cloudflare (select your domain when prompted)
+**Step 3 — Start AG2R:**
+
+```bash
+node server.js
+```
+
+Open the tunnel URL on your phone. The URL changes each time you restart the tunnel.
+
+#### Stable URL with your own domain (optional)
+
+If you have a domain on Cloudflare, you can set up a permanent tunnel so the URL never changes:
+
+```bash
 cloudflared tunnel login
-
-# Create a named tunnel
 cloudflared tunnel create ag2r
-
-# Route your subdomain to the tunnel
 cloudflared tunnel route dns ag2r ag2r.yourdomain.com
 ```
 
-**Create the config file** at `~/.cloudflared/config.yml`:
+Create `~/.cloudflared/config.yml`:
 
 ```yaml
-tunnel: <TUNNEL_ID_FROM_CREATE_STEP>
-credentials-file: /path/to/.cloudflared/<TUNNEL_ID>.json
+tunnel: <TUNNEL_ID>
+credentials-file: ~/.cloudflared/<TUNNEL_ID>.json
 
 ingress:
   - hostname: ag2r.yourdomain.com
@@ -130,32 +115,7 @@ ingress:
   - service: http_status:404
 ```
 
-**Set a password** in `.env`:
-
-```bash
-APP_PASSWORD=your-strong-password
-SESSION_SECRET=run-openssl-rand-hex-24-to-generate
-TUNNEL_ENABLED=true
-TUNNEL_URL=https://ag2r.yourdomain.com
-```
-
-**Run both services:**
-
-```bash
-# Terminal 1: AG2R server
-node server.js
-
-# Terminal 2: Cloudflare tunnel
-cloudflared tunnel run ag2r
-```
-
-Open `https://ag2r.yourdomain.com` on your phone — works from anywhere.
-
-> [!TIP]
-> To run the tunnel as a background service that starts on boot:
-> ```bash
-> cloudflared service install
-> ```
+Set `TUNNEL_URL=https://ag2r.yourdomain.com` in `.env`, then run `node server.js` and `cloudflared tunnel run ag2r` in separate terminals.
 
 ---
 
@@ -235,6 +195,21 @@ Switch between conversations, browse files changed, artifacts, and background ta
 
 ---
 
+### Push Notifications
+
+Get notified on your phone when the session needs permission approval — even with the app in the background. Tap the notification to jump straight to the pending request.
+
+<p align="center">
+  <img src="docs/notification-push.jpg" alt="Push notification on Android" width="320" />
+</p>
+
+> [!NOTE]
+> **iOS:** Push notifications require the PWA to be installed to your home screen (iOS 16.4+). Open AG2R in Safari, tap Share → "Add to Home Screen."
+>
+> **Android:** If Chrome doesn't prompt for notifications, go to Chrome **Settings → Site settings → Notifications** and set "How to show requests" to **"Expand all requests"**. Then reload the page and tap anywhere to trigger the prompt.
+
+---
+
 ### More Features
 
 - **Send messages** — type and send messages to the AI from your phone
@@ -242,6 +217,32 @@ Switch between conversations, browse files changed, artifacts, and background ta
 - **Stop generation** — cancel a running generation with the stop button
 - **Auto-reconnect** — seamless reconnection when connection drops
 - **Cookie-based auth** — enter passcode once, stays logged in for 30 days
+
+---
+
+## 🐛 Debug Mode
+
+Start the server with `AG2R_DEBUG=1` to enable verbose logging:
+
+```bash
+AG2R_DEBUG=1 node server.js
+```
+
+When active, key client events (message sends, click proxying, WebSocket lifecycle) are relayed to the server and printed as a unified timestamped log stream:
+
+```
+[2026-06-14T00:30:00.000Z CLIENT] sendMessage-entry isSending=false text="fix the bug" images=0
+[2026-06-14T00:30:00.500Z SERVER] Click Proxying click id=chat:5 label="Undo"
+[2026-06-14T00:30:01.200Z CLIENT] sendMessage-exit
+```
+
+Useful for diagnosing mobile-specific bugs (double-submission, click failures) where you can't see the browser console.
+
+---
+
+## 🔄 Keep It Running (Optional)
+
+If you have a dedicated tunnel with a stable URL, cron-based watchdog scripts can keep AG2R and the tunnel alive and auto-update from `origin/main`. See `scripts/` for the available watchdogs (`main-watchdog.sh`, `tunnel-watchdog.sh`).
 
 ---
 

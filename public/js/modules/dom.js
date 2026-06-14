@@ -68,3 +68,11 @@ export const authStatus = document.getElementById('auth-status');
 export const authCallbackUrlInput = document.getElementById('auth-callback-url-input');
 export const authCallbackSubmitBtn = document.getElementById('auth-callback-submit-btn');
 export const agPowerBtn = document.getElementById('ag-power-btn');
+export const subagentBar = document.getElementById('subagent-bar');
+export const subagentBackBtn = document.getElementById('subagent-back-btn');
+export const subagentParentName = document.getElementById('subagent-parent-name');
+export const restartConfirm = document.getElementById('restart-confirm');
+export const restartCancel = document.getElementById('restart-cancel');
+export const restartGo = document.getElementById('restart-go');
+export const refreshBtn = document.getElementById('refresh-btn');
+

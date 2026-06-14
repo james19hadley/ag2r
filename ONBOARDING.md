@@ -51,14 +51,22 @@
 | Self-signed SSL certs (auto-generated, gitignored) | `certs/` |
 | PWA manifest (home screen icon + app metadata) | `public/manifest.json` |
 | Multi-worktree hub (dev-only proxy) | `hub.js` |
-| Hub: Antigravity restart + status detection | `hub.js` — search `handleRestartAntigravity` and `antigravityRunning` |
-| Hub: Restart main server (kill + pull + restart) | `hub.js` — search `handleRestartMain` |
 | Hub: Icon cache-busting (content hash) | `hub.js` — search `ICON_HASH` and `fileHash` |
-| Main server watchdog + auto-updater (cron scripts) | `scripts/watchdog.sh`, `scripts/updater.sh`, `scripts/hub-watchdog.sh`, `scripts/tunnel-watchdog.sh` |
+| Main server watchdog + auto-updater (cron) | `scripts/main-watchdog.sh` |
+| Hub watchdog + auto-updater (cron) | `scripts/hub-watchdog.sh` |
+| Cloudflare tunnel watchdog (cron) | `scripts/tunnel-watchdog.sh` |
+| Antigravity desktop app watchdog — ensures CDP enabled (cron) | `scripts/ag-watchdog.sh` |
 | Voice input (shared factory for main + new session mic) | `public/js/app.js` — search `createVoiceInput` |
 | Anonymous usage telemetry (Firestore REST, opt-out, installId) | `src/telemetry.js` |
-| Telemetry operations (querying, schema, Firebase project) | `.telemetry/GEMINI.md` (gitignored, local only) |
+| Browser-side CDP eval scripts (extracted from server.js) | `src/cdp-scripts/` — `_shared.js` has `tagInteractives`/`untagAll` |
 | README screenshots (product showcase) | `docs/` |
+| Push notifications (VAPID, service worker, subscription) | `server.js` — search `pushSubscriptions`; `hub.js` — search `hubPushSubscriptions`; `public/sw.js`; `public/js/app.js` — search `initPushNotifications` |
+| Restart Antigravity (sidebar button + confirmation + API) | `server.js` — search `POST /restart-antigravity`; `public/js/app.js` — search `showRestartConfirm` |
+| Hard refresh button (PWA home screen workaround) | `public/index.html` — search `refresh-btn`; `public/js/app.js` — search `refreshBtn` |
+| Subagent view (detection, back button, yellow border) | `public/js/app.js` — search `isInSubagentView`; `server.js` — search `isSubagentView`; `public/css/style.css` — search `subagent` |
+| Debug logging (`AG2R_DEBUG=1`, unified client+server stream) | `server.js` — search `DEBUG_MODE` and `POST /debug-log`; `public/js/app.js` — search `debugLog` |
+| Image send pipeline (upload, drop, wait, send) | `server.js` — search `POST /send-images` and `waitForEditorImage`; `public/js/app.js` — search `sendMessage` |
+| Native dialog rendering (AG's HTML + CSS in overlay) | `public/js/app.js` — search `ag2r-dialog-native`; `public/css/style.css` — search `ag2r-dialog-native` |
 
 ---
 
@@ -73,11 +81,15 @@
 - **`div` inside `span`/`p`.** AG2.0 nests block elements inside inline elements for file-type icons. Browsers auto-close the inline parent, causing line breaks. Capture script converts nested `<div>` to `<span style="display: inline-flex">`.
 - **CDP overrides are minimal.** We stripped all CSS overrides (colors, spacing, code blocks, etc.) to let AG2.0's own injected CSS handle styling. Only scrollbar hiding and broken image suppression remain in our CSS.
 - **Never wipe cached content.** If snapshot capture returns null (no chat container found), the server keeps the last valid snapshot. The client never clears `chatContent.innerHTML` based on a failed selector check.
+- **Subagent view uses client-side tracking, not DOM detection.** Server-side breadcrumb detection (`isSubagentView` in CAPTURE_SCRIPT) is unreliable — AG's breadcrumb bar isn't always a sibling of `conversation-view`. Instead, the client sets `isInSubagentView = true` when the user clicks a task name, and resets it when clicking a sidebar conversation or the back button. The server-side detection remains as a fallback.
 - **Auth is env-var driven, not IP-based.** `AUTH_ENABLED=false` (default in `.env`) disables auth entirely — no login screen. The `ag2r()` shell function passes `AUTH_ENABLED=true` for production/tunnel use. Feature branch testing never needs auth.
 - **Right sidebar is on-demand, not polled.** The right sidebar HTML is NOT included in continuous snapshot polling (too heavy — can be 100KB+). Instead, `CAPTURE_SCRIPT` extracts a lightweight `sidebarSignature` (tab IDs + active tab, ~50 bytes). The full sidebar HTML is fetched via `GET /right-sidebar` when the user opens the panel. The client auto-refreshes when the signature changes while the sidebar is open.
 - **Right sidebar selector is fragile.** The AG right panel is found via `data-tab-id` buttons and `close-aux-pane` testid in `RIGHT_SIDEBAR_SCRIPT`. There are no stable container IDs. If AG's layout changes, the sidebar capture may fail silently (returns null). Use `GET /discover` to debug.
+- **Right sidebar auto-opens in AG.** If the right sidebar is closed in AG when the user opens it in AG2R, `GET /right-sidebar` tries to open it by clicking a review toggle button or sending `Cmd+Option+B` via CDP, waits 500ms, then re-captures. If opening fails, the client shows a fallback message instead of a black panel.
 - **Electron process detection on macOS.** `pgrep -x Antigravity` does NOT work — macOS Electron apps report the full binary path. Use `ps aux | grep "[A]ntigravity.app/Contents/MacOS/Antigravity"` instead. The `[A]` trick excludes the grep process itself.
 - **Click proxy indices are ephemeral.** `data-ag-click-id` is assigned per snapshot by iterating visible `button/a/[role=button]` elements in DOM order. If the DOM changes between snapshot capture and click proxy execution (e.g., streaming content), the index can point to the wrong element. The label validation in `POST /click` catches most mismatches.
+- **Dropdown and dialog share one overlay.** `dropdown-overlay` hosts both popover dropdowns and modal dialogs. The hide logic must check `!data.dropdownHtml && !data.dialogHtml` — hiding on just `!dropdownHtml` will kill a visible dialog. Dialog rendering uses dedup (`lastDialogHtml`) to prevent flicker, but the overlay show must happen outside the dedup block.
+- **Image send uses `appendMode`.** When sending text + images, `buildInjectScript` runs with `appendMode: true` to avoid `selectAll + delete` which would wipe the uploaded image from the editor. Image-only sends use `POST /send-images` with a fixed 500ms delay (image DOM detection is unreliable).
 - **AG artifact/file cards are DIVs, not buttons.** AG renders artifact banners and file-changed cards as `<div class="cursor-pointer" onclick="...">`, not `<button>`. The `maxTextLength` filter for cursor-pointer elements would skip them (text often >80 chars). The filter exempts elements with a direct `onclick` handler — if this breaks, check `tagInteractives` in `server.js`.
 - **Focus emulation (fragile).** `Emulation.setFocusEmulationEnabled({enabled: true})` is called on CDP connect to force AG's page to render while in the background. Without this, collapsible sections ("Worked for", "Thought for") expand structurally but React defers rendering their content, producing empty space. This is a CDP-level hack — if Electron or Chrome changes this API's behavior, it could cause side effects (e.g., cursor blinks, focus stealing). If strange behavior appears, disabling this is the first thing to try.
 - **Theme CSS variables extracted from DOM, not stylesheets.** AG defines `--foreground`, `--background`, `--sidebar`, etc. on DOM elements (theme provider), not in stylesheets. The capture script enumerates ALL `--*` custom properties via `Array.from(getComputedStyle(...))` and injects them as a `:root{}` rule. If AG changes how/where it sets theme vars, captured content text could become invisible.
@@ -95,6 +107,9 @@
 - **Onboarding pages (Next/Finish) are auto-clicked.** Antigravity 2.0.11 introduces multi-step onboarding pages (Security Notice, Theme Select, Google Plugins). To make Google login/switching seamless, the capture script (`src/browser-capture.js`) automatically detects onboarding screens and clicks `Next` or `Finish` in the background (setting `data-ag-clicked` to prevent double-clicks). The signin route `/auth/signin` also contains a fallback loop that handles onboarding explicitly.
 - **Watchdog boot-commit tracking.** Watchdog/updater scripts detect drift by comparing the commit the service booted at (`/tmp/ag2r-*-boot-commit`) against `origin/main` — NOT by comparing `HEAD` vs `origin/main`. This is because agent sessions pull latest main after committing, so HEAD advances locally and a naive comparison would see no changes. The boot-commit file is written by `hub.js handleStartMain`/`handleRestartMain` and by the watchdog scripts themselves at startup.
 - **Favicon is `ag2r-icon.png` everywhere.** There is no separate `favicon.png`. The hub, index.html, manifest, and apple-touch-icon all point to `/ag2r-icon.png`. Hub uses content-hash cache-busting (`?v=<md5>`) so browsers cache aggressively but pick up new icons on file change.
+- **iOS push requires PWA on home screen.** Web Push on iOS only works when the user has installed the PWA via "Add to Home Screen" (iOS 16.4+). Regular Safari tabs cannot receive push notifications. The app auto-subscribes on first user interaction — no UI needed.
+- **Server restart clears push subscriptions.** Push subscriptions are stored in memory (`pushSubscriptions` Map in `server.js`). On server restart, all subscriptions are lost. The client re-subscribes automatically on next page visit because `app.js` re-sends the existing browser subscription to `POST /push/subscribe` on every load.
+- **CDP port is auto-discovered.** AG app uses `--remote-debugging-port=0` (random port assigned by OS). AG2R reads the actual port from `~/Library/Application Support/Antigravity/DevToolsActivePort` at connect time, falling back to `CDP_PORT` env var. If CDP connection fails after an AG restart, the port changed — AG2R's reconnect loop will re-read the file automatically.
 
 ---
 
@@ -186,7 +201,7 @@ Gotchas or decisions the next session should know.
 
 ## 🧪 Testing
 
-> The hub (`hub.js`) runs on port 3100 and is always available via `ag2r.omercanyy.com`. It auto-detects any AG2R server on ports 3000–3099.
+> The main server (`server.js`) runs on port 3000 and is user-facing at `ag2r.omercanyy.com`. The dev hub (`hub.js`) runs on port 3100 at `dev-ag2r.omercanyy.com` and auto-detects agent servers on ports 3001–3099.
 
 ### Agent testing workflow
 
@@ -198,43 +213,37 @@ Gotchas or decisions the next session should know.
 
 | Port | Reserved for |
 |------|-------------|
-| 3000 | Main branch server (started via hub "Start Main" button) |
+| 3000 | Main branch server (`ag2r.omercanyy.com`, managed by `main-watchdog.sh`) |
 | 3001–3099 | Agent worktree servers |
-| 3100 | Hub |
+| 3100 | Dev hub (`dev-ag2r.omercanyy.com`, managed by `hub-watchdog.sh`) |
 
 ### How the hub works
 
-- Scans ports 3000–3099 every 5s, identifies worktrees via process CWD
-- Landing page at `/` lists active sessions — user clicks one to enter
+- Scans ports 3001–3099 every 5s, identifies worktrees via process CWD
+- Landing page at `/` lists active dev sessions — user clicks one to enter
 - Cookie-based routing proxies all subsequent requests to the chosen session
-- Cloudflare tunnel → port 3100 → user accesses all sessions remotely
+- Cloudflare tunnel → `dev-ag2r.omercanyy.com` → port 3100
 - The app has zero awareness of the hub
 
 ---
 
 ## 🔄 Auto-Managed Hub & Main Server
 
-> The hub landing page is a **Control Panel** with two sections: an "Antigravity Desktop" status card (restart AG) and an "Active Sessions" list. The main server card has a **Restart** button (kills → pulls latest → reinstalls deps if needed → restarts). A cron job keeps the hub itself alive.
+> Four cron jobs keep everything running: `main-watchdog.sh` manages the main server (port 3000), `hub-watchdog.sh` manages the dev hub (port 3100), `tunnel-watchdog.sh` keeps the Cloudflare tunnel alive, and `ag-watchdog.sh` ensures the Antigravity desktop app is running with `--debug`. Each watchdog handles both health checks and auto-updates from `origin/main` (except `ag-watchdog.sh` which only manages app lifecycle).
 
-### Hub Watchdog (cron)
+### Cron Setup
 
 ```bash
 crontab -e
 
-# Add these lines to keep hub and tunnel running:
+# Add these lines:
 */5 * * * * ~/Workspace/ag2r/scripts/hub-watchdog.sh >> /tmp/ag2r-hub-watchdog.log 2>&1
-*/5 * * * * ~/Workspace/ag2r/scripts/tunnel-watchdog.sh >> /tmp/ag2r-tunnel-watchdog.log 2>&1
+1-56/5 * * * * ~/Workspace/ag2r/scripts/main-watchdog.sh >> /tmp/ag2r-main-watchdog.log 2>&1
+2-57/5 * * * * ~/Workspace/ag2r/scripts/tunnel-watchdog.sh >> /tmp/ag2r-tunnel-watchdog.log 2>&1
+4-59/5 * * * * ~/Workspace/ag2r/scripts/ag-watchdog.sh >> /tmp/ag2r-ag-watchdog.log 2>&1
 ```
 
-The hub watchdog checks if the hub is responding every 5 minutes and restarts it if down. The tunnel watchdog checks if `cloudflared` is running and restarts it if not. All watchdog scripts use boot-commit tracking (see Gotchas). Once both are up, use the **Start Main** or **Restart** button from the landing page.
-
-### Optional: Server Watchdog + Auto-Updater (cron)
-
-```bash
-# Keep main server always running (optional — Start Main button is usually enough):
-*/5 * * * * ~/Workspace/ag2r/scripts/watchdog.sh >> /tmp/ag2r-watchdog.log 2>&1
-*/10 * * * * ~/Workspace/ag2r/scripts/updater.sh >> /tmp/ag2r-updater.log 2>&1
-```
+All watchdog scripts use boot-commit tracking (see Gotchas) to detect code drift.
 
 ### Configuration (environment variables)
 

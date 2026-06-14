@@ -190,6 +190,8 @@ export function addClickProxyHandlers(container) {
       }
 
       if (clickId.startsWith('left:')) {
+        state.isInSubagentView = false;
+        state.subagentViewTaskName = '';
         const elClass = (el.className || '').toString();
         const isConversationRow = elClass.includes('min-h-[32px]');
         const isScheduledTasks = label === 'Scheduled Tasks';

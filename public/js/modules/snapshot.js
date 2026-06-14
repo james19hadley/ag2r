@@ -20,7 +20,9 @@ import {
   leftSidebarCdpStyles,
   rightSidebarCdpStyles,
   chatArea,
-  inputBar
+  inputBar,
+  subagentBar,
+  subagentParentName
 } from './dom.js';
 
 export async function loadSnapshot() {
@@ -72,11 +74,23 @@ export async function loadSnapshot() {
         if (leftSidebar) leftSidebar.classList.remove('open');
       }
 
-      const hideBottomBar = data.isNewSessionPage;
+      const hideBottomBar = data.isNewSessionPage || data.isSubagentView || state.isInSubagentView;
       inputBar.classList.toggle('hidden', hideBottomBar);
       const quickActions = document.getElementById('quick-actions');
       if (quickActions) {
         if (hideBottomBar) quickActions.classList.add('hidden');
+      }
+
+      // Subagent view: show back bar + yellow border indicator
+      const showSubagentUI = state.isInSubagentView || data.isSubagentView;
+      if (showSubagentUI) {
+        const displayName = state.subagentViewTaskName || data.parentConversationName || 'Parent';
+        if (subagentParentName) subagentParentName.textContent = displayName;
+        subagentBar?.classList.remove('hidden');
+        chatArea?.classList.add('subagent-view');
+      } else {
+        subagentBar?.classList.add('hidden');
+        chatArea?.classList.remove('subagent-view');
       }
 
       addMobileCopyButtons();
