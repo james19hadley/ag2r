@@ -4,13 +4,13 @@ import { evaluateInBrowser, evaluateAcrossContexts } from './cdp.js';
 import { captureSnapshot } from './snapshot.js';
 import { broadcast } from './broadcast.js';
 import { track } from './telemetry.js';
-import {
-  makeTaskClickScript,
-  makeSchedClickScript,
-  makeListboxClickScript,
-  makeDlgClickScript,
-  makeClickScript
-} from './click-scripts.js';
+
+// CDP scripts from src/cdp-scripts/
+import { buildTaskClickScript } from './cdp-scripts/click-task.js';
+import { buildSchedClickScript } from './cdp-scripts/click-sched.js';
+import { buildSchedPortalClickScript } from './cdp-scripts/click-sched-portal.js';
+import { buildSchedDialogClickScript } from './cdp-scripts/click-sched-dialog.js';
+import { buildMainClickScript } from './cdp-scripts/click-main.js';
 
 export function registerClickRoute(app) {
   app.post('/click', async (req, res) => {
@@ -41,37 +41,45 @@ export function registerClickRoute(app) {
     }
 
     try {
+      let result = null;
+
       if (String(clickId).startsWith('task:')) {
         const taskIdx = parseInt(String(clickId).split(':')[1], 10);
-        const result = await evaluateAcrossContexts(makeTaskClickScript(taskIdx));
+        const script = buildTaskClickScript(taskIdx);
+        result = await evaluateAcrossContexts(script);
         log('Click', `Task result: ${JSON.stringify(result)}`);
-        return res.json(result || { ok: false, reason: 'null_result' });
-      }
-
-      if (String(clickId).startsWith('sched:')) {
+      } 
+      else if (String(clickId).startsWith('sched:')) {
         const schedIdx = parseInt(String(clickId).split(':')[1], 10);
-        const result = await evaluateAcrossContexts(makeSchedClickScript(schedIdx));
+        const script = buildSchedClickScript(schedIdx);
+        result = await evaluateAcrossContexts(script);
         log('Click', `Sched result: ${JSON.stringify(result)}`);
-        return res.json(result || { ok: false, reason: 'null_result' });
-      }
-
-      if (String(clickId).startsWith('scheddlg:')) {
+      } 
+      else if (String(clickId).startsWith('scheddlg:')) {
         const dlgIdx = parseInt(String(clickId).split(':')[1], 10);
 
         if (dlgIdx >= 100) {
           const optIdx = dlgIdx - 100;
-          const result = await evaluateInBrowser(makeListboxClickScript(optIdx));
-          log('Click', `SchedDlgListbox result: ${JSON.stringify(result)}`);
-          return res.json(result || { ok: false, reason: 'null_result' });
+          const portalClickScript = buildSchedPortalClickScript(optIdx);
+          // Try preferred context first
+          result = await evaluateInBrowser(portalClickScript);
+          // If not found in preferred context, try across all contexts
+          if (!result) {
+            result = await evaluateAcrossContexts(portalClickScript);
+          }
+          log('Click', `SchedDlgPortal result: ${JSON.stringify(result)}`);
+        } else {
+          const safeLabel = JSON.stringify(label || '');
+          const dlgClickScript = buildSchedDialogClickScript(dlgIdx, safeLabel);
+          result = await evaluateAcrossContexts(dlgClickScript);
+          log('Click', `SchedDlg result: ${JSON.stringify(result)}`);
         }
-
-        const result = await evaluateAcrossContexts(makeDlgClickScript(dlgIdx, label));
-        log('Click', `SchedDlg result: ${JSON.stringify(result)}`);
-        return res.json(result || { ok: false, reason: 'null_result' });
+      } 
+      else {
+        const clickScript = buildMainClickScript(JSON.stringify(String(clickId)), JSON.stringify(label || ''));
+        result = await evaluateInBrowser(clickScript);
+        log('Click', `Result: ${JSON.stringify(result)}`);
       }
-
-      const result = await evaluateInBrowser(makeClickScript(clickId, label));
-      log('Click', `Result: ${JSON.stringify(result)}`);
 
       if (result?.ok) {
         const actualLabel = result.label || '';
@@ -101,7 +109,7 @@ export function registerClickRoute(app) {
 
       if (result?.ok) {
         const source = result.source || '';
-        if (['env', 'model', 'project', 'dropdown', 'dialog', 'left'].includes(source)) {
+        if (['env', 'model', 'project', 'dropdown', 'dialog', 'left'].includes(source) || String(clickId).startsWith('sched:') || String(clickId).startsWith('scheddlg:')) {
           const burstCapture = async (delay) => {
             await new Promise(r => setTimeout(r, delay));
             try {
@@ -115,6 +123,7 @@ export function registerClickRoute(app) {
                   (snapshot.dialogHtml || '') +
                   (snapshot.settingsHtml || '') +
                   (snapshot.permissionHtml || '') +
+                  (snapshot.runningTasksHtml || '') +
                   (snapshot.scheduledTasksHtml || '') +
                   (snapshot.scheduledTasksDialogHtml || '')
                 );
